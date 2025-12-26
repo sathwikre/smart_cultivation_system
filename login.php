@@ -172,79 +172,526 @@ if(isset($_POST['step']) && $_POST['step'] == 'resend_otp'){
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo $translations['login'] ?? 'Login'; ?> | Smart Cultivation System</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Font Awesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-/* Copy same CSS from register.php for consistency */
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;} body{overflow-x:hidden;} body::before{ content:"";position:fixed;top:0;left:0;width:100%;height:100%; background: linear-gradient(135deg,#00c6ff,#0072ff,#00ffb0,#00c6ff); background-size:400% 400%;animation: gradientBG 20s ease infinite;z-index:-2; } @keyframes gradientBG{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}} .icon-bg{position:fixed;font-size:2.5rem;color:rgba(255,255,255,0.15);animation: floatBg 15s linear infinite;z-index:-1;} .icon-bg:nth-child(1){top:10%; left:5%; animation-duration:20s;} .icon-bg:nth-child(2){top:30%; left:85%; animation-duration:18s;} .icon-bg:nth-child(3){top:70%; left:10%; animation-duration:22s;} .icon-bg:nth-child(4){top:50%; left:50%; animation-duration:25s;} .icon-bg:nth-child(5){top:80%; left:80%; animation-duration:30s;} @keyframes floatBg{0%{transform: translateY(0) rotate(0deg);}50%{transform: translateY(-30px) rotate(180deg);}100%{transform: translateY(0) rotate(360deg);}} .container{display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh; padding:20px; text-align:center;} .hero h1{font-size:4rem; font-weight:900; text-transform:uppercase; background: linear-gradient(90deg,#ffd700,#ff8c00,#ff0000,#ffd700); background-size:400%; -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation: gradientText 6s linear infinite, floatHeading 3s ease-in-out infinite; margin-bottom:20px;} .hero p{font-size:1.3rem;color:rgba(255,255,255,0.9);margin-bottom:40px;animation: fadeIn 2s ease-in-out;} @keyframes gradientText{0%{background-position:0%;}50%{background-position:100%;}100%{background-position:0%;}} @keyframes floatHeading{0%,100%{transform:translateY(0);}50%{transform:translateY(-15px);}} .form-box{background: rgba(255,255,255,0.1);padding:35px;border-radius:25px;backdrop-filter: blur(10px);width:100%; max-width:500px;box-shadow:0 15px 40px rgba(0,0,0,0.5);animation: fadeIn 2s ease-in-out;} .form-box input{width:100%; padding:14px 18px; margin:12px 0; border:none; border-radius:12px; outline:none; font-size:1rem; background: rgba(255,255,255,0.2); color:#fff; transition:0.3s;} .form-box input::placeholder{color:rgba(255,255,255,0.7);} .form-box input:focus{background: rgba(255,255,255,0.3); transform:scale(1.02);} .btn{display:inline-block; margin:15px 0; padding:15px 45px; font-size:1.2rem; font-weight:700; border:none; border-radius:50px; cursor:pointer; transition:0.4s; background: linear-gradient(45deg,#ffd700,#ff8c00,#ff0000); color:#fff; box-shadow:0 8px 25px rgba(0,0,0,0.4); position:relative; overflow:hidden;} .btn:before{content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background:rgba(255,255,255,0.2); transition:0.4s;} .btn:hover:before{left:100%;} .btn:hover{transform:translateY(-5px) scale(1.02); box-shadow:0 15px 35px rgba(0,0,0,0.5);} .message{color:#fff; margin:15px 0; font-weight:600;} .lang-switch{position:absolute; top:20px; right:30px; z-index:10;} .lang-switch a{margin:0 10px; padding:8px 15px; border-radius:25px; background:rgba(255,255,255,0.3); color:#fff; font-weight:600; transition:0.3s;} .lang-switch a:hover{background:rgba(255,255,255,0.6);}
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
-body{overflow-x:hidden;}
-body::before{ content:"";position:fixed;top:0;left:0;width:100%;height:100%; background: linear-gradient(135deg,#00c6ff,#0072ff,#00ffb0,#00c6ff); background-size:400% 400%;animation: gradientBG 20s ease infinite;z-index:-2; } 
-@keyframes gradientBG{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
-.icon-bg{position:fixed;font-size:2.5rem;color:rgba(255,255,255,0.15);animation: floatBg 15s linear infinite;z-index:-1;}
-.icon-bg:nth-child(1){top:10%; left:5%; animation-duration:20s;} 
-.icon-bg:nth-child(2){top:30%; left:85%; animation-duration:18s;} 
-.icon-bg:nth-child(3){top:70%; left:10%; animation-duration:22s;} 
-.icon-bg:nth-child(4){top:50%; left:50%; animation-duration:25s;} 
-.icon-bg:nth-child(5){top:80%; left:80%; animation-duration:30s;} 
-@keyframes floatBg{0%{transform: translateY(0) rotate(0deg);}50%{transform: translateY(-30px) rotate(180deg);}100%{transform: translateY(0) rotate(360deg);}}
-.container{display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh; padding:20px; text-align:center;}
-.hero h1{font-size:4rem; font-weight:900; text-transform:uppercase; background: linear-gradient(90deg,#ffd700,#ff8c00,#ff0000,#ffd700); background-size:400%; -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation: gradientText 6s linear infinite, floatHeading 3s ease-in-out infinite; margin-bottom:20px;}
-.hero p{font-size:1.3rem;color:rgba(255,255,255,0.9);margin-bottom:40px;animation: fadeIn 2s ease-in-out;}
-@keyframes gradientText{0%{background-position:0%;}50%{background-position:100%;}100%{background-position:0%;}} 
-@keyframes floatHeading{0%,100%{transform:translateY(0);}50%{transform:translateY(-15px);}} 
-.form-box{background: rgba(255,255,255,0.1);padding:35px;border-radius:25px;backdrop-filter: blur(10px);width:100%; max-width:500px;box-shadow:0 15px 40px rgba(0,0,0,0.5);animation: fadeIn 2s ease-in-out;}
-.form-box input{width:100%; padding:14px 18px; margin:12px 0; border:none; border-radius:12px; outline:none; font-size:1rem; background: rgba(255,255,255,0.2); color:#fff; transition:0.3s;}
-.form-box input::placeholder{color:rgba(255,255,255,0.7);}
-.form-box input:focus{background: rgba(255,255,255,0.3); transform:scale(1.02);}
-.btn{display:inline-block; margin:15px 0; padding:15px 45px; font-size:1.2rem; font-weight:700; border:none; border-radius:50px; cursor:pointer; transition:0.4s; background: linear-gradient(45deg,#ffd700,#ff8c00,#ff0000); color:#fff; box-shadow:0 8px 25px rgba(0,0,0,0.4); position:relative; overflow:hidden;}
-.btn:before{content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background:rgba(255,255,255,0.2); transition:0.4s;}
-.btn:hover:before{left:100%;} 
-.btn:hover{transform:translateY(-5px) scale(1.02); box-shadow:0 15px 35px rgba(0,0,0,0.5);}
-.message{color:#fff; margin:15px 0; font-weight:600;}
-.lang-switch{position:absolute; top:20px; right:30px; z-index:10;}
-.lang-switch a{margin:0 10px; padding:8px 15px; border-radius:25px; background:rgba(255,255,255,0.3); color:#fff; font-weight:600; transition:0.3s;}
-.lang-switch a:hover{background:rgba(255,255,255,0.6);}
+/* Reset & Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-green: #2d8659;
+    --primary-green-dark: #1f5d3f;
+    --primary-green-light: #3da372;
+    --secondary-green: #4caf50;
+    --accent-orange: #ff9800;
+    --accent-yellow: #ffc107;
+    --text-dark: #2c3e50;
+    --text-light: #5a6c7d;
+    --bg-light: #f8f9fa;
+    --bg-white: #ffffff;
+    --border-color: #e0e0e0;
+    --error-color: #e74c3c;
+    --success-color: #27ae60;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.16);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+    font-family: 'Inter', 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
+    min-height: 100vh;
+    color: var(--text-dark);
+    line-height: 1.6;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Background Pattern */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 20% 50%, rgba(45, 134, 89, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(76, 175, 80, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(255, 152, 0, 0.02) 0%, transparent 50%);
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Container */
+.login-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    background: var(--bg-white);
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    padding: 48px;
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* Header */
+.login-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.login-header h1 {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--primary-green-dark);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+}
+
+.login-header p {
+    color: var(--text-light);
+    font-size: 15px;
+}
+
+/* Message Alert */
+.message-alert {
+    padding: 14px 18px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideDown 0.3s ease-out;
+}
+
+.message-alert.error {
+    background: #fee;
+    color: var(--error-color);
+    border: 1px solid #fcc;
+}
+
+.message-alert.success {
+    background: #efe;
+    color: var(--success-color);
+    border: 1px solid #cfc;
+}
+
+.message-alert i {
+    font-size: 18px;
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 15px;
+    font-family: inherit;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-white);
+    color: var(--text-dark);
+    transition: var(--transition);
+    outline: none;
+}
+
+.form-group input:focus {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 3px rgba(45, 134, 89, 0.1);
+}
+
+.form-group input::placeholder {
+    color: #999;
+}
+
+/* Buttons */
+.btn {
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.btn-primary {
+    background: var(--primary-green);
+    color: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover {
+    background: var(--primary-green-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: var(--bg-light);
+    color: var(--text-dark);
+    border: 2px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--bg-white);
+    border-color: var(--primary-green);
+    color: var(--primary-green);
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--primary-green);
+    border: 2px solid var(--primary-green);
+}
+
+.btn-outline:hover {
+    background: var(--primary-green);
+    color: white;
+}
+
+/* OTP Section */
+.otp-section {
+    text-align: center;
+}
+
+.otp-section .icon-wrapper {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(45, 134, 89, 0.1), rgba(76, 175, 80, 0.1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.otp-section i {
+    font-size: 36px;
+    color: var(--primary-green);
+}
+
+.otp-section h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 12px;
+}
+
+.otp-section p {
+    color: var(--text-light);
+    margin-bottom: 32px;
+    font-size: 15px;
+}
+
+.otp-input {
+    font-size: 24px;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 8px;
+    padding: 16px;
+}
+
+.otp-input::placeholder {
+    letter-spacing: 4px;
+    font-size: 16px;
+}
+
+/* Button Group */
+.btn-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.btn-group .btn {
+    flex: 1;
+    margin: 0;
+}
+
+/* Back Link */
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-light);
+    text-decoration: none;
+    font-size: 14px;
+    margin-bottom: 24px;
+    transition: var(--transition);
+}
+
+.back-link:hover {
+    color: var(--primary-green);
+}
+
+.back-link i {
+    font-size: 14px;
+}
+
+/* Language Switch */
+.lang-switch {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    background: var(--bg-white);
+    padding: 6px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+}
+
+.lang-switch a {
+    padding: 8px 16px;
+    border-radius: 8px;
+    color: var(--text-dark);
+    font-weight: 500;
+    font-size: 14px;
+    text-decoration: none;
+    transition: var(--transition);
+    background: transparent;
+}
+
+.lang-switch a:hover,
+.lang-switch a.active {
+    background: var(--primary-green);
+    color: white;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .login-container {
+        padding: 32px 24px;
+        margin: 10px;
+    }
+
+    .login-header h1 {
+        font-size: 28px;
+    }
+
+    .btn-group {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
+    .login-container {
+        padding: 24px 20px;
+    }
+
+    .login-header h1 {
+        font-size: 24px;
+    }
+}
+
+/* Success Message for Registration */
+.registered-notice {
+    background: #e8f5e9;
+    color: var(--success-color);
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid #c8e6c9;
+}
 </style>
 </head>
 <body>
+
+<!-- Language Toggle -->
 <div class="lang-switch">
-    <a href="?lang=en">English</a> | <a href="?lang=te">తెలుగు</a>
+    <a href="?lang=en" class="<?php echo $lang === 'en' ? 'active' : ''; ?>">English</a>
+    <a href="?lang=te" class="<?php echo $lang === 'te' ? 'active' : ''; ?>">తెలుగు</a>
 </div>
 
-<!-- Floating icons -->
-<i class="fas fa-leaf icon-bg"></i>
-<i class="fas fa-seedling icon-bg"></i>
-<i class="fas fa-tractor icon-bg"></i>
-<i class="fas fa-water icon-bg"></i>
-<i class="fas fa-sun icon-bg"></i>
+<div class="login-container">
+    <!-- Back Link -->
+    <a href="index.php" class="back-link">
+        <i class="fas fa-arrow-left"></i>
+        <?php echo $translations['back'] ?? 'Back to Home'; ?>
+    </a>
 
-<div class="container">
-    <div class="hero">
-        <h1><?php echo $translations['login'] ?? 'Login'; ?></h1>
+    <!-- Header -->
+    <div class="login-header">
+        <h1><i class="fas fa-sign-in-alt"></i> <?php echo $translations['login'] ?? 'Login'; ?></h1>
         <p><?php echo $translations['login_subtitle'] ?? 'Enter your email to receive OTP and login'; ?></p>
     </div>
-    <?php if($message) echo "<div class='message'>$message</div>"; ?>
 
-    <div class="form-box">
-        <?php if($showForm): ?>
-        <form method="POST">
-            <input type="hidden" name="step" value="request_otp">
-            <input type="email" name="email" placeholder="<?php echo $translations['email'] ?? 'Enter your email'; ?>" required>
-            <button type="submit" class="btn"><?php echo $translations['send_otp'] ?? 'Send OTP'; ?></button>
-        </form>
-        <?php else: ?>
-        <form method="POST" style="display:inline-block; width:60%;">
-            <input type="hidden" name="step" value="verify_otp">
-            <input type="text" name="otp" placeholder="<?php echo $translations['enter_otp'] ?? 'Enter OTP'; ?>" required>
-            <button type="submit" class="btn"><?php echo $translations['verify_otp'] ?? 'Verify OTP'; ?></button>
-        </form>
-        <form method="POST" style="display:inline-block; margin-left:10px;">
-            <input type="hidden" name="step" value="resend_otp">
-            <button type="submit" class="btn" style="background:#0099ff;"><?php echo $translations['resend_otp'] ?? 'Resend OTP'; ?></button>
-        </form>
-        <?php endif; ?>
+    <!-- Registration Success Notice -->
+    <?php if(isset($_GET['registered'])): ?>
+    <div class="registered-notice">
+        <i class="fas fa-check-circle"></i>
+        <?php echo $translations['register_success'] ?? 'Registration successful! You can now login.'; ?>
     </div>
+    <?php endif; ?>
+
+    <!-- Message Alert -->
+    <?php if($message): ?>
+    <div class="message-alert <?php echo strpos($message, 'sent') !== false || strpos($message, 'success') !== false ? 'success' : 'error'; ?>">
+        <i class="fas <?php echo strpos($message, 'sent') !== false || strpos($message, 'success') !== false ? 'fa-check-circle' : 'fa-exclamation-circle'; ?>"></i>
+        <span><?php echo htmlspecialchars($message); ?></span>
+    </div>
+    <?php endif; ?>
+
+    <?php if($showForm): ?>
+    <!-- Email Input Form -->
+    <form method="POST" id="loginForm">
+        <input type="hidden" name="step" value="request_otp">
+        
+        <div class="form-group">
+            <label for="email"><?php echo $translations['email'] ?? 'Email Address'; ?></label>
+            <input 
+                type="email" 
+                id="email" 
+                name="email" 
+                placeholder="<?php echo $translations['enter_email'] ?? 'your.email@example.com'; ?>" 
+                required 
+                autofocus
+            >
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-paper-plane"></i>
+            <?php echo $translations['send_otp'] ?? 'Send OTP'; ?>
+        </button>
+    </form>
+
+    <div style="text-align: center; margin-top: 24px; color: var(--text-light); font-size: 14px;">
+        <?php echo $translations['dont_have_account'] ?? "Don't have an account?"; ?>
+        <a href="register.php" style="color: var(--primary-green); text-decoration: none; font-weight: 600;">
+            <?php echo $translations['register'] ?? 'Register'; ?>
+        </a>
+    </div>
+
+    <?php else: ?>
+    <!-- OTP Verification Form -->
+    <div class="otp-section">
+        <div class="icon-wrapper">
+            <i class="fas fa-envelope"></i>
+        </div>
+        <h2><?php echo $translations['verify_otp'] ?? 'Verify OTP'; ?></h2>
+        <p><?php echo $translations['otp_sent_message'] ?? 'We have sent an OTP to your email address. Please enter it below.'; ?></p>
+
+        <form method="POST">
+            <input type="hidden" name="step" value="verify_otp">
+            
+            <div class="form-group">
+                <label for="otp"><?php echo $translations['enter_otp'] ?? 'Enter OTP'; ?></label>
+                <input 
+                    type="text" 
+                    id="otp" 
+                    name="otp" 
+                    class="otp-input" 
+                    placeholder="000000" 
+                    maxlength="6" 
+                    pattern="[0-9]{6}" 
+                    required 
+                    autofocus
+                >
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-check-circle"></i>
+                    <?php echo $translations['verify_otp'] ?? 'Verify OTP'; ?>
+                </button>
+            </div>
+        </form>
+
+        <form method="POST" style="margin-top: 12px;">
+            <input type="hidden" name="step" value="resend_otp">
+            <button type="submit" class="btn btn-outline">
+                <i class="fas fa-redo"></i>
+                <?php echo $translations['resend_otp'] ?? 'Resend OTP'; ?>
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 24px;">
+            <a href="login.php" class="back-link" style="display: inline-flex;">
+                <i class="fas fa-arrow-left"></i>
+                <?php echo $translations['back_to_login'] ?? 'Back to Login'; ?>
+            </a>
+        </div>
+    </div>
+    <?php endif; ?>
 </div>
+
+<script>
+// Auto-format OTP input
+document.addEventListener('DOMContentLoaded', function() {
+    const otpInput = document.getElementById('otp');
+    if (otpInput) {
+        otpInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
+    }
+});
+</script>
+
 </body>
 </html>

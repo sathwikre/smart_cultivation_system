@@ -331,6 +331,14 @@ body{
     </ul>
 </div>
 
+<!-- Crop Disease Recognition Section -->
+<div class="section" id="disease-recognition">
+    <h2>Crop Disease Recognition</h2>
+    <p>Use this tool to identify potential diseases in your crops by uploading leaf images.</p>
+    <!-- Button to open the Crop Disease Identifier Flask app in the same tab -->
+    <button onclick="window.location.href='http://127.0.0.1:5000'" class="btn-add-crop" style="display: inline-block; padding: 10px 20px; margin-bottom: 15px; font-weight: 600; font-size: 1rem; text-decoration: none; color: #fff; border-radius: 12px; background: linear-gradient(135deg, #28a745, #00ff7f); box-shadow: 0 4px 15px rgba(0,255,127,0.6); transition: 0.3s ease-in-out; cursor: pointer; border: none;">Recognize Disease</button>
+</div>
+
 <!-- Knowledge Base Section -->
 <div class="section" id="knowledge">
     <h2><?php echo $translations['knowledge_base']; ?></h2>

@@ -2,7 +2,7 @@
 // db_connection.php
 // Database configuration
 $servername = "localhost"; // MySQL host
-$port = 3306;              // Custom port
+$port = 3307;              // Custom port
 $username = "root";        // Your MySQL username
 $password = "";            // Your MySQL password
 $dbname = "smart_cultivation"; // Your database name

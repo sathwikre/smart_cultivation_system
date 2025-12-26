@@ -108,130 +108,638 @@ $translations = include "languages/$lang.php";
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title><?php echo $translations['farmer_reports'] ?? 'Farmer Reports'; ?> | Smart Cultivation System</title>
 
-<!-- Fonts + icons + Chart.js -->
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Font Awesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-/* Page layout and glass UI inspired by dashboard */
-:root{
-    --glass-bg: rgba(255,255,255,0.08);
-    --glass-strong: rgba(255,255,255,0.14);
-    --accent: linear-gradient(90deg,#ffd700,#ff8c00,#ff4c4c);
-}
-*{box-sizing:border-box;font-family:'Poppins',sans-serif}
-body{
-    margin:0;background: linear-gradient(135deg,#00c6ff,#0072ff,#00ffb0,#00c6ff);
-    background-size:400% 400%;animation: gradientBG 20s linear infinite;color:#fff;
-}
-@keyframes gradientBG{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-
-.container{
-    max-width:1200px;margin:28px auto;padding:20px;
+/* Reset & Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-/* Top bar */
-.topbar{
-    display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;
-}
-.topbar .title{
-    display:flex;align-items:center;gap:16px;
-}
-.logo{
-    width:64px;height:64px;border-radius:12px;background:var(--glass-strong);
-    display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:20px;
-    box-shadow:0 8px 30px rgba(0,0,0,0.4);
-}
-.title h1{font-size:1.6rem;margin:0}
-.controls{display:flex;gap:10px;align-items:center;}
-.controls a.btn, .controls button.btn{
-    padding:10px 14px;border-radius:12px;background:rgba(255,255,255,0.08);color:#fff;text-decoration:none;border:none;
-    cursor:pointer;font-weight:600;backdrop-filter: blur(6px);
-}
-.controls a.btn:hover, .controls button.btn:hover{transform:translateY(-2px)}
-.lang-switch a{color:#fff;text-decoration:none;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.06)}
-
-/* Grid */
-.grid{
-    display:grid;grid-template-columns: 1fr 420px;gap:22px;
-}
-@media(max-width:980px){ .grid{grid-template-columns:1fr} }
-
-/* Left column */
-.left-col{
-    display:flex;flex-direction:column;gap:18px;
+:root {
+    --primary-green: #2d8659;
+    --primary-green-dark: #1f5d3f;
+    --primary-green-light: #3da372;
+    --secondary-green: #4caf50;
+    --accent-orange: #ff9800;
+    --text-dark: #2c3e50;
+    --text-light: #5a6c7d;
+    --bg-light: #f8f9fa;
+    --bg-white: #ffffff;
+    --border-color: #e0e0e0;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.16);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Cards row */
-.cards-row{display:grid;grid-template-columns: repeat(2,1fr);gap:16px}
-@media(max-width:720px){ .cards-row{grid-template-columns:1fr} }
-
-.card{
-    background: var(--glass-bg); padding:18px;border-radius:14px; box-shadow:0 12px 30px rgba(0,0,0,0.45);
-    border:1px solid rgba(255,255,255,0.04);
+body {
+    font-family: 'Inter', 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
+    min-height: 100vh;
+    color: var(--text-dark);
+    line-height: 1.6;
+    padding: 20px;
 }
-.card h3{margin:0 0 6px 0;font-size:1rem}
-.card p{margin:0;color:rgba(255,255,255,0.85)}
 
-/* Chart containers */
-.chart-wrap{height:300px;padding:8px}
-
-/* Timeline / list */
-.timeline{
-    display:flex;flex-direction:column;gap:10px;
+/* Background Pattern */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 20% 50%, rgba(45, 134, 89, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(76, 175, 80, 0.03) 0%, transparent 50%);
+    z-index: 0;
+    pointer-events: none;
 }
-.timeline .item{
-    display:flex;gap:12px;align-items:center;background:var(--glass-strong);
-    padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);
+
+/* Container */
+.container {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    animation: fadeInUp 0.6s ease-out;
 }
-.timeline .item .dot{width:12px;height:12px;border-radius:50%;background:#fff;opacity:0.9}
-.timeline .item .meta{font-size:0.95rem}
-.timeline .item .meta small{display:block;color:rgba(255,255,255,0.7);font-size:0.8rem}
 
-/* Right column (sidebar) */
-.right-col{display:flex;flex-direction:column;gap:18px}
-.weather-card{
-    background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
-    padding:18px;border-radius:14px;text-align:center;
-    border:1px solid rgba(255,255,255,0.04);
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
-.weather-card img{width:80px;height:80px}
-.small-stats{display:flex;gap:10px;flex-direction:row;flex-wrap:wrap}
-.small-stat{flex:1;min-width:120px;background:rgba(255,255,255,0.04);padding:10px;border-radius:10px;text-align:center}
 
-/* Footer actions */
-.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
-.actions button{padding:10px 12px;border-radius:10px;border:none;background:var(--accent);color:#111;font-weight:700;cursor:pointer}
-.print-hidden{display:none}
+/* Top Bar */
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    background: white;
+    padding: 24px 32px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    flex-wrap: wrap;
+    gap: 16px;
+}
 
-/* Make charts crisp on dark background */
-canvas{background:transparent !important;}
+.topbar .title {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
 
-/* Utility */
-.kv{display:flex;justify-content:space-between;opacity:0.9}
+.logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+    box-shadow: var(--shadow-sm);
+}
 
-/* subtle entrance */
-.fade-up{animation:fadeUp .6s ease both}
-@keyframes fadeUp{ from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+.title h1 {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--primary-green-dark);
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.title .subtitle {
+    font-size: 14px;
+    color: var(--text-light);
+    margin-top: 4px;
+}
+
+.controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.controls .btn {
+    padding: 10px 18px;
+    border-radius: 10px;
+    background: var(--bg-light);
+    color: var(--text-dark);
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.controls .btn:hover {
+    background: var(--primary-green);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.controls .btn-primary {
+    background: var(--primary-green);
+    color: white;
+}
+
+.controls .btn-primary:hover {
+    background: var(--primary-green-dark);
+}
+
+.lang-switch {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-light);
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.lang-switch a {
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: var(--text-dark);
+    text-decoration: none;
+    font-size: 13px;
+    transition: var(--transition);
+}
+
+.lang-switch a:hover,
+.lang-switch a.active {
+    background: var(--primary-green);
+    color: white;
+}
+
+/* Grid Layout */
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+}
+
+@media (max-width: 1024px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Left Column */
+.left-col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Cards Row */
+.cards-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+}
+
+@media (max-width: 768px) {
+    .cards-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Cards */
+.card {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    border: 2px solid transparent;
+    transition: var(--transition);
+    animation: fadeInUp 0.6s ease-out;
+    animation-fill-mode: both;
+}
+
+.card:nth-child(1) { animation-delay: 0.1s; }
+.card:nth-child(2) { animation-delay: 0.2s; }
+.card:nth-child(3) { animation-delay: 0.3s; }
+.card:nth-child(4) { animation-delay: 0.4s; }
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-green-light);
+}
+
+.card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card h3 i {
+    color: var(--primary-green);
+    font-size: 20px;
+}
+
+.card p {
+    margin: 0 0 16px 0;
+    color: var(--text-light);
+    font-size: 14px;
+}
+
+/* Chart Containers */
+.chart-wrap {
+    height: 280px;
+    padding: 8px;
+    position: relative;
+}
+
+/* Timeline */
+.timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.timeline .item {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: var(--bg-light);
+    padding: 14px 16px;
+    border-radius: 12px;
+    border-left: 4px solid var(--primary-green);
+    transition: var(--transition);
+    animation: slideInRight 0.4s ease-out;
+    animation-fill-mode: both;
+}
+
+.timeline .item:nth-child(1) { animation-delay: 0.1s; }
+.timeline .item:nth-child(2) { animation-delay: 0.2s; }
+.timeline .item:nth-child(3) { animation-delay: 0.3s; }
+.timeline .item:nth-child(4) { animation-delay: 0.4s; }
+.timeline .item:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.timeline .item:hover {
+    background: #e8f5e9;
+    transform: translateX(4px);
+}
+
+.timeline .item .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--primary-green);
+    margin-top: 6px;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 4px rgba(45, 134, 89, 0.1);
+}
+
+.timeline .item .meta {
+    flex: 1;
+}
+
+.timeline .item .meta strong {
+    display: block;
+    color: var(--text-dark);
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.timeline .item .meta small {
+    display: block;
+    color: var(--text-light);
+    font-size: 13px;
+}
+
+/* Right Column */
+.right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Weather Card */
+.weather-card {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+    animation: fadeInUp 0.6s ease-out;
+    animation-delay: 0.3s;
+    animation-fill-mode: both;
+}
+
+.weather-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--bg-light);
+}
+
+.weather-icon {
+    width: 80px;
+    height: 80px;
+}
+
+.weather-info {
+    text-align: left;
+}
+
+.weather-info .description {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-dark);
+    text-transform: capitalize;
+    margin-bottom: 4px;
+}
+
+.weather-info .temperature {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--primary-green-dark);
+    margin-bottom: 4px;
+}
+
+.weather-info .location {
+    font-size: 13px;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.small-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.small-stat {
+    background: var(--bg-light);
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.small-stat .label {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-bottom: 6px;
+}
+
+.small-stat .value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.actions button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: var(--primary-green);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.actions button:hover {
+    background: var(--primary-green-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Stats Card */
+.stats-card {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.stats-card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stats-card h3 i {
+    color: var(--primary-green);
+}
+
+.kv {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--bg-light);
+}
+
+.kv:last-child {
+    border-bottom: none;
+}
+
+.kv span {
+    color: var(--text-light);
+    font-size: 14px;
+}
+
+.kv strong {
+    color: var(--text-dark);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+/* Export Card */
+.export-card {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.export-card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.export-card h3 i {
+    color: var(--primary-green);
+}
+
+.export-card p {
+    color: var(--text-light);
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+.export-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.export-actions .btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    background: var(--bg-light);
+    color: var(--text-dark);
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.export-actions .btn:hover {
+    background: var(--primary-green);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Print Styles */
+@media print {
+    .controls,
+    .actions,
+    .export-actions {
+        display: none;
+    }
+    
+    .card {
+        page-break-inside: avoid;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .controls {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .small-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
+    .topbar {
+        padding: 20px;
+    }
+
+    .card {
+        padding: 20px;
+    }
+}
 </style>
 </head>
 <body>
 <div class="container">
     <div class="topbar">
         <div class="title">
-            <div class="logo"><i class="fas fa-leaf"></i></div>
+            <div class="logo">
+                <i class="fas fa-chart-line"></i>
+            </div>
             <div>
                 <h1><?php echo $translations['farmer_reports'] ?? 'Farmer Reports'; ?></h1>
-                <div style="opacity:0.85;font-size:0.9rem"><?php echo $translations['welcome'] ?? 'Smart Cultivation System'; ?> — <?php echo htmlspecialchars($user['fullname']); ?></div>
+                <div class="subtitle">
+                    <i class="fas fa-user"></i>
+                    <?php echo htmlspecialchars($user['fullname']); ?>
+                </div>
             </div>
         </div>
 
         <div class="controls">
-            <a class="btn" href="farmer_dashboard.php"><i class="fas fa-arrow-left"></i> <?php echo $translations['back'] ?? 'Back to Dashboard'; ?></a>
-            <a class="btn" href="?lang=en">EN</a>
-            <a class="btn" href="?lang=te">TE</a>
-            <button class="btn" id="printBtn"><i class="fas fa-print"></i> Print</button>
+            <a class="btn btn-primary" href="farmer_dashboard.php">
+                <i class="fas fa-arrow-left"></i>
+                <?php echo $translations['back'] ?? 'Back to Dashboard'; ?>
+            </a>
+            <div class="lang-switch">
+                <a href="?lang=en" class="<?php echo $lang === 'en' ? 'active' : ''; ?>">EN</a>
+                <a href="?lang=te" class="<?php echo $lang === 'te' ? 'active' : ''; ?>">TE</a>
+            </div>
+            <button class="btn btn-primary" id="printBtn">
+                <i class="fas fa-print"></i>
+                Print
+            </button>
         </div>
     </div>
 
@@ -239,16 +747,16 @@ canvas{background:transparent !important;}
         <!-- LEFT: charts & timeline -->
         <div class="left-col">
             <div class="cards-row">
-                <div class="card fade-up">
-                    <h3><?php echo $translations['growth_progress'] ?? 'Growth Progress'; ?></h3>
+                <div class="card">
+                    <h3><i class="fas fa-chart-bar"></i> <?php echo $translations['growth_progress'] ?? 'Growth Progress'; ?></h3>
                     <p><?php echo $translations['growth_progress_sub'] ?? 'Progress per crop based on current stage'; ?></p>
                     <div class="chart-wrap">
                         <canvas id="growthChart"></canvas>
                     </div>
                 </div>
 
-                <div class="card fade-up">
-                    <h3><?php echo $translations['notifications_trend'] ?? 'Notifications Trend (7 days)'; ?></h3>
+                <div class="card">
+                    <h3><i class="fas fa-bell"></i> <?php echo $translations['notifications_trend'] ?? 'Notifications Trend (7 days)'; ?></h3>
                     <p><?php echo $translations['notifications_trend_sub'] ?? 'Number of reminders / notifications per day'; ?></p>
                     <div class="chart-wrap">
                         <canvas id="notifChart"></canvas>
@@ -256,19 +764,22 @@ canvas{background:transparent !important;}
                 </div>
             </div>
 
-            <div class="card fade-up">
-                <h3><?php echo $translations['weather_analytics'] ?? 'Weather Analytics (5 day)'; ?></h3>
+            <div class="card">
+                <h3><i class="fas fa-cloud-sun"></i> <?php echo $translations['weather_analytics'] ?? 'Weather Analytics (5 day)'; ?></h3>
                 <p><?php echo $translations['weather_analytics_sub'] ?? 'Local forecast from OpenWeatherMap'; ?></p>
                 <div class="chart-wrap">
                     <canvas id="weatherChart"></canvas>
                 </div>
-                <div style="margin-top:10px;font-size:0.9rem;opacity:0.85">
-                    <span class="kv"><span>Location</span><strong><?php echo htmlspecialchars($user['district']); ?></strong></span>
+                <div style="margin-top:16px;padding-top:16px;border-top:2px solid var(--bg-light);">
+                    <div class="kv">
+                        <span><i class="fas fa-map-marker-alt" style="color: var(--primary-green); margin-right: 6px;"></i>Location</span>
+                        <strong><?php echo htmlspecialchars($user['district']); ?></strong>
+                    </div>
                 </div>
             </div>
 
-            <div class="card fade-up">
-                <h3><?php echo $translations['crop_stage_timeline'] ?? 'Crop Stage Timeline'; ?></h3>
+            <div class="card">
+                <h3><i class="fas fa-history"></i> <?php echo $translations['crop_stage_timeline'] ?? 'Crop Stage Timeline'; ?></h3>
                 <p><?php echo $translations['crop_stage_timeline_sub'] ?? 'Recent stage updates for your crops'; ?></p>
 
                 <div class="timeline" id="timelineList">
@@ -278,48 +789,87 @@ canvas{background:transparent !important;}
                             $when = date("d M Y, H:i", strtotime($it['when']));
                             $stage = htmlspecialchars($it['stage']);
                             $crop = htmlspecialchars($it['crop']);
-                            echo "<div class='item'><div class='dot'></div><div class='meta'><strong>{$crop}</strong><small>{$stage} &middot; {$when}</small></div></div>";
+                            $stageIcons = [
+                                'Seed' => '🌱',
+                                'Germination' => '🌿',
+                                'Vegetative' => '🌳',
+                                'Flowering' => '🌸',
+                                'Harvest' => '🌾'
+                            ];
+                            $stageIcon = $stageIcons[$stage] ?? '🌱';
+                            echo "<div class='item'>
+                                    <div class='dot'></div>
+                                    <div class='meta'>
+                                        <strong>{$stageIcon} {$crop}</strong>
+                                        <small>{$stage} &middot; {$when}</small>
+                                    </div>
+                                  </div>";
                         }
                     } else {
-                        echo "<div class='item'><div class='dot'></div><div class='meta'><strong>No timeline data</strong></div></div>";
+                        echo "<div class='item'>
+                                <div class='dot'></div>
+                                <div class='meta'>
+                                    <strong>No timeline data available</strong>
+                                    <small>Update your crop stages to see timeline</small>
+                                </div>
+                              </div>";
                     }
                     ?>
                 </div>
-
             </div>
         </div>
 
         <!-- RIGHT: weather snapshot, key stats -->
         <aside class="right-col">
-            <div class="weather-card fade-up" id="weatherSnapshot">
-                <div style="display:flex;align-items:center;justify-content:center;gap:12px">
-                    <div>
-                        <img src="" alt="weather" id="wsIcon" style="display:none">
-                    </div>
-                    <div style="text-align:left">
-                        <div id="wsDesc" style="font-size:1.1rem;font-weight:700">--</div>
-                        <div id="wsTemp" style="font-size:1.6rem;font-weight:700">--°C</div>
-                        <div style="opacity:0.85" id="wsLoc"><?php echo htmlspecialchars($user['district']); ?></div>
+            <div class="weather-card" id="weatherSnapshot">
+                <div class="weather-header">
+                    <img src="" alt="weather" id="wsIcon" class="weather-icon" style="display:none">
+                    <div class="weather-info">
+                        <div id="wsDesc" class="description">Loading...</div>
+                        <div id="wsTemp" class="temperature">--°C</div>
+                        <div id="wsLoc" class="location">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <?php echo htmlspecialchars($user['district']); ?>
+                        </div>
                     </div>
                 </div>
 
-                <div style="margin-top:12px" class="small-stats">
-                    <div class="small-stat"><div style="opacity:0.85">Humidity</div><div id="wsHum">--%</div></div>
-                    <div class="small-stat"><div style="opacity:0.85">Wind</div><div id="wsWind">-- m/s</div></div>
-                    <div class="small-stat"><div style="opacity:0.85">Clouds</div><div id="wsCloud">--%</div></div>
+                <div class="small-stats">
+                    <div class="small-stat">
+                        <div class="label"><i class="fas fa-tint"></i> Humidity</div>
+                        <div id="wsHum" class="value">--%</div>
+                    </div>
+                    <div class="small-stat">
+                        <div class="label"><i class="fas fa-wind"></i> Wind</div>
+                        <div id="wsWind" class="value">-- m/s</div>
+                    </div>
+                    <div class="small-stat">
+                        <div class="label"><i class="fas fa-cloud"></i> Clouds</div>
+                        <div id="wsCloud" class="value">--%</div>
+                    </div>
                 </div>
 
                 <div class="actions">
-                    <button id="refreshWeather"><?php echo $translations['refresh'] ?? 'Refresh'; ?></button>
-                    <button id="downloadPNG"><?php echo $translations['download_chart'] ?? 'Download Chart'; ?></button>
+                    <button id="refreshWeather">
+                        <i class="fas fa-sync-alt"></i>
+                        <?php echo $translations['refresh'] ?? 'Refresh'; ?>
+                    </button>
+                    <button id="downloadPNG">
+                        <i class="fas fa-download"></i>
+                        <?php echo $translations['download_chart'] ?? 'Download Chart'; ?>
+                    </button>
                 </div>
             </div>
 
-            <div class="card fade-up">
-                <h3><?php echo $translations['quick_stats'] ?? 'Quick Stats'; ?></h3>
-                <div style="margin-top:10px">
-                    <div class="kv"><span><?php echo $translations['total_crops'] ?? 'Total crops'; ?></span><strong><?php echo count($farmer_crops); ?></strong></div>
-                    <div class="kv" style="margin-top:6px"><span><?php echo $translations['total_notifications'] ?? 'Total notifications'; ?></span>
+            <div class="stats-card">
+                <h3><i class="fas fa-chart-pie"></i> <?php echo $translations['quick_stats'] ?? 'Quick Stats'; ?></h3>
+                <div>
+                    <div class="kv">
+                        <span><i class="fas fa-seedling" style="color: var(--primary-green); margin-right: 6px;"></i><?php echo $translations['total_crops'] ?? 'Total crops'; ?></span>
+                        <strong><?php echo count($farmer_crops); ?></strong>
+                    </div>
+                    <div class="kv">
+                        <span><i class="fas fa-bell" style="color: var(--primary-green); margin-right: 6px;"></i><?php echo $translations['total_notifications'] ?? 'Total notifications'; ?></span>
                         <strong>
                         <?php
                         // Count total notifications for this user
@@ -334,16 +884,25 @@ canvas{background:transparent !important;}
                         ?>
                         </strong>
                     </div>
-                    <div style="margin-top:6px" class="kv"><span><?php echo $translations['last_update'] ?? 'Last update'; ?></span><strong><?php echo date("d M Y"); ?></strong></div>
+                    <div class="kv">
+                        <span><i class="fas fa-calendar-check" style="color: var(--primary-green); margin-right: 6px;"></i><?php echo $translations['last_update'] ?? 'Last update'; ?></span>
+                        <strong><?php echo date("d M Y"); ?></strong>
+                    </div>
                 </div>
             </div>
 
-            <div class="card fade-up">
-                <h3><?php echo $translations['export'] ?? 'Export'; ?></h3>
-                <p style="opacity:0.85"><?php echo $translations['export_sub'] ?? 'Download or print reports for records'; ?></p>
-                <div style="margin-top:10px;display:flex;gap:8px">
-                    <button onclick="window.print()" class="btn"><?php echo $translations['print'] ?? 'Print'; ?></button>
-                    <a class="btn" href="farmer_dashboard.php"><?php echo $translations['back'] ?? 'Back'; ?></a>
+            <div class="export-card">
+                <h3><i class="fas fa-file-export"></i> <?php echo $translations['export'] ?? 'Export'; ?></h3>
+                <p><?php echo $translations['export_sub'] ?? 'Download or print reports for records'; ?></p>
+                <div class="export-actions">
+                    <button onclick="window.print()" class="btn">
+                        <i class="fas fa-print"></i>
+                        <?php echo $translations['print'] ?? 'Print'; ?>
+                    </button>
+                    <a class="btn" href="farmer_dashboard.php">
+                        <i class="fas fa-arrow-left"></i>
+                        <?php echo $translations['back'] ?? 'Back'; ?>
+                    </a>
                 </div>
             </div>
         </aside>
@@ -370,53 +929,174 @@ const growthChart = new Chart(gCtx, {
             data: growthValues,
             borderRadius: 8,
             backgroundColor: (ctx) => {
-                // gradient effect
                 const g = ctx.chart.ctx.createLinearGradient(0,0,0,300);
-                g.addColorStop(0, '#ffd700');
-                g.addColorStop(1, '#ff4c4c');
+                g.addColorStop(0, '#3da372');
+                g.addColorStop(1, '#2d8659');
                 return g;
-            }
+            },
+            borderColor: '#1f5d3f',
+            borderWidth: 2
         }]
     },
     options: {
-        responsive:true,
-        maintainAspectRatio:false,
-        scales:{
-            y:{beginAtZero:true, max:100, ticks:{stepSize:20}}
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                    stepSize: 20,
+                    color: '#5a6c7d',
+                    font: { size: 12 }
+                },
+                grid: {
+                    color: 'rgba(0,0,0,0.05)'
+                }
+            },
+            x: {
+                ticks: {
+                    color: '#5a6c7d',
+                    font: { size: 12 }
+                },
+                grid: {
+                    color: 'rgba(0,0,0,0.05)'
+                }
+            }
         },
-        plugins:{legend:{display:false}}
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: 'rgba(45, 134, 89, 0.9)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: '#1f5d3f',
+                borderWidth: 1,
+                padding: 12,
+                cornerRadius: 8
+            }
+        }
     }
 });
 
 /* CHART: Notifications (line) */
 const nCtx = document.getElementById('notifChart').getContext('2d');
 const notifChart = new Chart(nCtx, {
-    type:'line',
-    data:{
+    type: 'line',
+    data: {
         labels: notifLabels,
-        datasets:[{
+        datasets: [{
             label: '<?php echo addslashes($translations['notifications'] ?? 'Notifications'); ?>',
             data: notifValues,
-            tension:0.3,
-            pointRadius:6,
-            fill:true,
-            backgroundColor:'rgba(255,255,255,0.06)',
-            borderColor:'#ff8c00',
-            pointBackgroundColor:'#fff'
+            tension: 0.4,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            fill: true,
+            backgroundColor: 'rgba(45, 134, 89, 0.1)',
+            borderColor: '#2d8659',
+            borderWidth: 3,
+            pointBackgroundColor: '#2d8659',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
         }]
     },
-    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}}
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    color: '#5a6c7d',
+                    font: { size: 12 },
+                    stepSize: 1
+                },
+                grid: {
+                    color: 'rgba(0,0,0,0.05)'
+                }
+            },
+            x: {
+                ticks: {
+                    color: '#5a6c7d',
+                    font: { size: 12 }
+                },
+                grid: {
+                    color: 'rgba(0,0,0,0.05)'
+                }
+            }
+        },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: 'rgba(45, 134, 89, 0.9)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: '#1f5d3f',
+                borderWidth: 1,
+                padding: 12,
+                cornerRadius: 8
+            }
+        }
+    }
 });
 
 /* CHART: Weather placeholder - will update after fetch */
 const wCtx = document.getElementById('weatherChart').getContext('2d');
 let weatherChart = new Chart(wCtx, {
-    type:'line',
-    data:{labels:[], datasets:[{
-        label: '<?php echo addslashes($translations['temperature'] ?? 'Temperature (°C)'); ?>',
-        data:[], tension:0.3, fill:true, backgroundColor:'rgba(255,255,255,0.06)', borderColor:'#00c6ff'
-    }]},
-    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}}
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [{
+            label: '<?php echo addslashes($translations['temperature'] ?? 'Temperature (°C)'); ?>',
+            data: [],
+            tension: 0.4,
+            fill: true,
+            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+            borderColor: '#4caf50',
+            borderWidth: 3,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#4caf50',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                ticks: {
+                    color: '#5a6c7d',
+                    font: { size: 12 }
+                },
+                grid: {
+                    color: 'rgba(0,0,0,0.05)'
+                }
+            },
+            x: {
+                ticks: {
+                    color: '#5a6c7d',
+                    font: { size: 12 }
+                },
+                grid: {
+                    color: 'rgba(0,0,0,0.05)'
+                }
+            }
+        },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: 'rgba(45, 134, 89, 0.9)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: '#1f5d3f',
+                borderWidth: 1,
+                padding: 12,
+                cornerRadius: 8
+            }
+        }
+    }
 });
 
 /* WEATHER: fetch 5-day forecast (group by day) */

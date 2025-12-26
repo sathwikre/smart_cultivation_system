@@ -31,142 +31,438 @@ $translations = include "languages/$lang.php";
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo $translations['admin_dashboard'] ?? 'Admin Dashboard'; ?> | Smart Cultivation System</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <style>
-/* General Styling */
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
-body{
-    overflow-x:hidden;
-    background: linear-gradient(135deg,#00c6ff,#0072ff,#00ffb0,#00c6ff);
-    background-size:400% 400%;
-    animation: gradientBG 20s ease infinite;
-    color:#fff;
+/* Reset & Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
-@keyframes gradientBG{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
 
-/* Floating Icons */
-.icon-bg{
-    position:fixed;font-size:2.5rem;color:rgba(255,255,255,0.15);
-    animation: floatBg 20s linear infinite;z-index:-1;
+:root {
+    --primary-green: #2d8659;
+    --primary-green-dark: #1f5d3f;
+    --primary-green-light: #3da372;
+    --secondary-green: #4caf50;
+    --accent-orange: #ff9800;
+    --accent-yellow: #ffc107;
+    --text-dark: #2c3e50;
+    --text-light: #5a6c7d;
+    --bg-light: #f8f9fa;
+    --bg-white: #ffffff;
+    --border-color: #e0e0e0;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.16);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.icon-bg:nth-child(1){top:10%; left:5%;}
-.icon-bg:nth-child(2){top:30%; left:85%;}
-.icon-bg:nth-child(3){top:70%; left:10%;}
-.icon-bg:nth-child(4){top:50%; left:50%;}
-.icon-bg:nth-child(5){top:80%; left:80%;}
-@keyframes floatBg{0%{transform: translateY(0) rotate(0deg);}50%{transform: translateY(-30px) rotate(180deg);}100%{transform: translateY(0) rotate(360deg);}}
+
+body {
+    font-family: 'Inter', 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
+    min-height: 100vh;
+    color: var(--text-dark);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* Background Pattern */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 20% 50%, rgba(45, 134, 89, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(76, 175, 80, 0.03) 0%, transparent 50%);
+    z-index: 0;
+    pointer-events: none;
+}
 
 /* Dashboard Layout */
-.dashboard{display:flex; min-height:100vh;}
-.sidebar{
-    width:250px; background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(10px); padding:20px;
-    display:flex; flex-direction:column; justify-content:space-between;
-    border-right:1px solid rgba(255,255,255,0.2);
+.dashboard {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
 }
-.sidebar h2{text-align:center; font-size:1.8rem; margin-bottom:30px;}
-.sidebar a{
-    color:#fff; text-decoration:none; padding:12px 15px;
-    border-radius:12px; margin:6px 0; display:block; transition:.3s;
-}
-.sidebar a:hover{background: rgba(255,255,255,0.2);}
 
-.lang-switch{text-align:center; margin-top:20px;}
-.lang-switch a{
-    padding:6px 12px; border-radius:15px;
-    background:rgba(255,255,255,0.2); margin:0 5px;
+/* Sidebar */
+.sidebar {
+    width: 280px;
+    background: white;
+    box-shadow: var(--shadow-md);
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-right: 2px solid var(--bg-light);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
 }
-.lang-switch a:hover{background:rgba(255,255,255,0.35);}
 
-.logout-btn{
-    margin-top:20px; padding:10px 25px;
-    background:#ff4c4c; border:none; border-radius:25px;
-    font-weight:600; color:#fff; cursor:pointer; transition:.3s;
+.sidebar h2 {
+    text-align: center;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--primary-green-dark);
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid var(--bg-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
 }
-.logout-btn:hover{background:#ff1c1c; transform:scale(1.05);}
+
+.sidebar h2 i {
+    color: var(--primary-green);
+    font-size: 28px;
+}
+
+.sidebar a {
+    color: var(--text-dark);
+    text-decoration: none;
+    padding: 14px 18px;
+    border-radius: 12px;
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: var(--transition);
+    font-weight: 500;
+    font-size: 15px;
+    position: relative;
+}
+
+.sidebar a::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--primary-green);
+    border-radius: 0 4px 4px 0;
+    transform: scaleY(0);
+    transition: var(--transition);
+}
+
+.sidebar a:hover {
+    background: var(--bg-light);
+    color: var(--primary-green);
+    padding-left: 22px;
+}
+
+.sidebar a:hover::before {
+    transform: scaleY(1);
+}
+
+.sidebar a i {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+}
+
+/* Language Switch */
+.lang-switch {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px solid var(--bg-light);
+}
+
+.lang-switch a {
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: var(--bg-light);
+    margin: 0 4px;
+    color: var(--text-dark);
+    font-weight: 600;
+    font-size: 13px;
+    display: inline-block;
+}
+
+.lang-switch a:hover {
+    background: var(--primary-green);
+    color: white;
+}
+
+/* Logout Button */
+.logout-btn {
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px 25px;
+    background: linear-gradient(135deg, #f56565, #e53e3e);
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    color: white;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 15px;
+    box-shadow: var(--shadow-sm);
+}
+
+.logout-btn:hover {
+    background: linear-gradient(135deg, #e53e3e, #c53030);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
 
 /* Main Content */
-.main{flex:1;padding:30px;}
-.header{display:flex; justify-content:space-between; align-items:center;}
-.header h1{font-size:2.4rem;font-weight:700;}
-.header .welcome{font-size:1.1rem; opacity:.8;}
+.main {
+    flex: 1;
+    padding: 40px;
+    background: transparent;
+}
 
-.cards{
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-    gap:20px;margin-top:30px;
+/* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    background: white;
+    padding: 30px 40px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
 }
-.card{
-    background:rgba(255,255,255,0.1);padding:25px;border-radius:20px;
-    text-align:center;backdrop-filter:blur(10px);
-    box-shadow:0 10px 30px rgba(0,0,0,0.4);
-    transition:.3s; cursor:pointer;
+
+.header h1 {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--primary-green-dark);
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
-.card:hover{transform:translateY(-6px);background:rgba(255,255,255,0.2);}
-.card i{font-size:2.2rem;margin-bottom:12px;}
-.card h3{font-size:1.3rem;}
+
+.header h1 i {
+    color: var(--primary-green);
+    font-size: 36px;
+}
+
+.header .welcome {
+    font-size: 16px;
+    color: var(--text-light);
+    background: var(--bg-light);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+/* Cards Grid */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 24px;
+    margin-top: 30px;
+}
+
+.card {
+    background: white;
+    padding: 32px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--text-dark);
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-green), var(--secondary-green));
+    transform: scaleX(0);
+    transition: var(--transition);
+}
+
+.card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-green-light);
+}
+
+.card:hover::before {
+    transform: scaleX(1);
+}
+
+.card i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: var(--primary-green);
+    display: block;
+    transition: var(--transition);
+}
+
+.card:hover i {
+    transform: scale(1.1);
+    color: var(--primary-green-light);
+}
+
+.card h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary-green-dark);
+    margin-top: 12px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .dashboard {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        border-right: none;
+        border-bottom: 2px solid var(--bg-light);
+    }
+
+    .main {
+        padding: 20px;
+    }
+
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 24px;
+    }
+
+    .header h1 {
+        font-size: 24px;
+    }
+
+    .cards {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .card {
+        padding: 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .main {
+        padding: 16px;
+    }
+
+    .header {
+        padding: 20px;
+    }
+
+    .card {
+        padding: 20px;
+    }
+
+    .card i {
+        font-size: 40px;
+    }
+}
 </style>
 </head>
 
 <body>
 
-<!-- Background Icons -->
-<i class="fas fa-leaf icon-bg"></i>
-<i class="fas fa-seedling icon-bg"></i>
-<i class="fas fa-tractor icon-bg"></i>
-<i class="fas fa-water icon-bg"></i>
-<i class="fas fa-sun icon-bg"></i>
-
 <div class="dashboard">
 
 <!-- Sidebar -->
 <div class="sidebar">
-    <h2>Admin Dashboard</h2>
+    <h2>
+        <i class="fas fa-shield-alt"></i>
+        Admin Dashboard
+    </h2>
 
-    <a href="crop_management.php"><i class="fas fa-seedling"></i> Crop Management</a>
-    <a href="knowledge_base_admin.php"><i class="fas fa-book"></i> Knowledge Base</a>
-    <a href="notifications_admin.php"><i class="fas fa-bell"></i> Notifications</a>
-    <a href="farmers_admin.php"><i class="fas fa-user"></i> Farmer Management</a>
+    <nav>
+        <a href="crop_management.php">
+            <i class="fas fa-seedling"></i>
+            <span>Crop Management</span>
+        </a>
+        <a href="knowledge_base_admin.php">
+            <i class="fas fa-book"></i>
+            <span>Knowledge Base</span>
+        </a>
+        <a href="notifications_admin.php">
+            <i class="fas fa-bell"></i>
+            <span>Notifications</span>
+        </a>
+        <a href="farmers_admin.php">
+            <i class="fas fa-users"></i>
+            <span>Farmer Management</span>
+        </a>
+    </nav>
 
-    <div class="lang-switch">
-        <a href="?lang=en">EN</a> 
-        <a href="?lang=te">TE</a>
+    <div>
+        <div class="lang-switch">
+            <a href="?lang=en">EN</a> 
+            <a href="?lang=te">TE</a>
+        </div>
+
+        <form action="logout.php" method="POST">
+            <button type="submit" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> <?php echo $translations['logout'] ?? 'Logout'; ?>
+            </button>
+        </form>
     </div>
-
-    <form action="logout.php" method="POST">
-        <button class="logout-btn"><?php echo $translations['logout']; ?></button>
-    </form>
 </div>
 
 <!-- Main Content -->
 <div class="main">
-
     <div class="header">
-        <h1>Hello, <?php echo $admin['fullname']; ?></h1>
-        <div class="welcome">Role: Admin</div>
+        <h1>
+            <i class="fas fa-user-shield"></i>
+            Hello, <?php echo htmlspecialchars($admin['fullname']); ?>
+        </h1>
+        <div class="welcome">
+            <i class="fas fa-badge-check"></i> Role: Admin
+        </div>
     </div>
 
     <!-- Dashboard Shortcut Cards -->
     <div class="cards">
         <a href="crop_management.php" class="card">
-            <i class="fas fa-seedling"></i><h3>Crop Management</h3>
+            <i class="fas fa-seedling"></i>
+            <h3>Crop Management</h3>
         </a>
 
         <a href="knowledge_base_admin.php" class="card">
-            <i class="fas fa-book"></i><h3>Knowledge Base</h3>
+            <i class="fas fa-book"></i>
+            <h3>Knowledge Base</h3>
         </a>
 
         <a href="notifications_admin.php" class="card">
-            <i class="fas fa-bell"></i><h3>Notifications</h3>
+            <i class="fas fa-bell"></i>
+            <h3>Notifications</h3>
         </a>
 
         <a href="farmers_admin.php" class="card">
-            <i class="fas fa-user"></i><h3>Farmer Management</h3>
+            <i class="fas fa-users"></i>
+            <h3>Farmer Management</h3>
         </a>
     </div>
-
 </div>
+
 </div>
 
 </body>

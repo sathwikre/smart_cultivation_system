@@ -176,6 +176,16 @@ body::before {
     justify-content: center;
     box-shadow: var(--shadow-md);
     transition: var(--transition);
+    pointer-events: auto !important;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.3);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.menu-toggle:active {
+    transform: scale(0.95);
+    background: var(--primary-green-dark);
 }
 
 .menu-toggle:hover {
@@ -198,10 +208,23 @@ body::before {
     background: rgba(0, 0, 0, 0.5);
     z-index: 998;
     animation: fadeIn 0.3s ease-out;
+    pointer-events: auto;
 }
 
 .sidebar-overlay.active {
     display: block;
+}
+
+/* Ensure overlay doesn't block sidebar clicks */
+@media (max-width: 768px) {
+    .sidebar-overlay.active {
+        pointer-events: auto;
+    }
+    
+    /* Sidebar should be above overlay and clickable */
+    .sidebar.active {
+        pointer-events: auto !important;
+    }
 }
 
 /* Sidebar */
@@ -872,7 +895,9 @@ body::before {
 @media (max-width: 768px) {
     /* Show hamburger menu on mobile */
     .menu-toggle {
-        display: flex;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
 
     /* Show close button in sidebar on mobile */
@@ -895,12 +920,37 @@ body::before {
         transition: left 0.3s ease-out;
         z-index: 1000;
         background: var(--sidebar-bg) !important;
+        pointer-events: none; /* Disable pointer events when hidden */
     }
 
     /* Show sidebar when active */
     .sidebar.active {
         left: 0;
         z-index: 1000;
+        pointer-events: auto !important; /* Enable pointer events when visible */
+    }
+
+    /* Ensure all interactive elements in sidebar are clickable when active */
+    .sidebar.active a,
+    .sidebar.active button,
+    .sidebar.active .logout-btn,
+    .sidebar.active .lang-switch a,
+    .sidebar.active .sidebar-close {
+        pointer-events: auto !important;
+        cursor: pointer;
+        -webkit-tap-highlight-color: rgba(255, 255, 255, 0.3);
+        touch-action: manipulation;
+        position: relative;
+        z-index: 1001;
+    }
+
+    .sidebar a,
+    .sidebar button,
+    .sidebar .logout-btn,
+    .sidebar .lang-switch a {
+        min-height: 44px; /* Minimum touch target size for mobile */
+        display: flex;
+        align-items: center;
     }
 
     /* Prevent body scroll when sidebar is open */
@@ -954,7 +1004,7 @@ body::before {
 <i class="fas fa-sun icon-bg"></i>
 
 <!-- Hamburger Menu Button (Mobile Only) -->
-<button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">
+<button class="menu-toggle" id="menuToggle" type="button">
     <i class="fas fa-bars" id="menuIcon"></i>
 </button>
 
@@ -1180,7 +1230,7 @@ body::before {
     </div>
 </div>
 <script>
-/* ================= WEATHER (AUTO LOCATION) ================= */
+/* ================= WEATHER (AUTO-DETECT LOCATION) ================= */
 document.addEventListener("DOMContentLoaded", function () {
 
     const apiKey = "8939754260ab572788b1c798b4e89406";
@@ -1188,86 +1238,142 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (!weatherBox) return;
 
-    if (!navigator.geolocation) {
-        weatherBox.innerHTML = `
-            <p style="color: var(--text-light);">
-                <i class="fas fa-exclamation-triangle" style="color: var(--accent-orange); margin-right: 8px;"></i>
-                Geolocation not supported by your browser.
-            </p>
-        `;
-        return;
+    // Get user's stored location from database (for fallback only)
+    const userLat = parseFloat("<?php echo addslashes($user['latitude'] ?? ''); ?>");
+    const userLon = parseFloat("<?php echo addslashes($user['longitude'] ?? ''); ?>");
+    const userDistrict = "<?php echo addslashes($user['district'] ?? ''); ?>";
+    const userState = "<?php echo addslashes($user['state'] ?? ''); ?>";
+    const userLocationAddress = "<?php echo addslashes($user['location_address'] ?? ''); ?>";
+
+    // Build fallback city name (district, state format for API)
+    let fallbackCity = '';
+    if (userDistrict && userState) {
+        fallbackCity = `${userDistrict}, ${userState}, IN`;
+    } else if (userDistrict) {
+        fallbackCity = `${userDistrict}, IN`;
+    } else if (userState) {
+        fallbackCity = `${userState}, IN`;
+    } else if (userLocationAddress) {
+        fallbackCity = userLocationAddress;
     }
 
-    navigator.geolocation.getCurrentPosition(
-        successLocation,
-        errorLocation,
-        { enableHighAccuracy: true, timeout: 10000 }
-    );
+    function fetchWeatherByLocation(location, locationType = 'coords') {
+        let url = '';
+        
+        if (locationType === 'coords') {
+            // Use coordinates (lat, lon)
+            url = `https://api.openweathermap.org/data/2.5/weather?lat=${location.lat}&lon=${location.lon}&appid=${apiKey}&units=metric`;
+        } else {
+            // Use city name
+            url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(location)}&appid=${apiKey}&units=metric`;
+        }
 
-    function successLocation(position) {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-
-        fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`)
-            .then(res => res.json())
+        fetch(url)
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Weather API error: ' + res.status);
+                }
+                return res.json();
+            })
             .then(data => {
-                if (data.cod !== 200) {
-                    weatherBox.innerHTML = `
-                        <p style="color: var(--text-light);">
-                            <i class="fas fa-exclamation-circle" style="color: var(--accent-orange); margin-right: 8px;"></i>
-                            Weather data unavailable at the moment.
-                        </p>
-                    `;
-                    return;
+                if (data.cod && data.cod !== 200) {
+                    throw new Error(data.message || 'Weather data unavailable');
                 }
 
+                // Success - render weather data
                 weatherBox.innerHTML = `
-                    <div style="margin-bottom: 20px;">
-                        <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png" alt="Weather Icon" style="width: 80px; height: 80px;">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png" alt="Weather Icon" style="width: 80px; height: 80px; display: block; margin: 0 auto;">
                     </div>
-                    <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--primary-green-dark); margin-bottom: 20px; text-transform: capitalize;">
+                    <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--primary-green-dark); margin-bottom: 20px; text-align: center; text-transform: capitalize;">
                         ${data.weather[0].description}
                     </h3>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-top: 24px;">
-                        <div style="padding: 16px; background: var(--bg-light); border-radius: 12px;">
-                            <i class="fas fa-thermometer-half" style="color: var(--accent-orange); font-size: 1.5rem; margin-bottom: 8px;"></i>
+                        <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
+                            <i class="fas fa-thermometer-half" style="color: var(--accent-orange); font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
                             <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Temperature</p>
-                            <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${data.main.temp}°C</p>
+                            <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${Math.round(data.main.temp)}°C</p>
                         </div>
-                        <div style="padding: 16px; background: var(--bg-light); border-radius: 12px;">
-                            <i class="fas fa-tint" style="color: #3498db; font-size: 1.5rem; margin-bottom: 8px;"></i>
+                        <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
+                            <i class="fas fa-tint" style="color: #3498db; font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
                             <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Humidity</p>
                             <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${data.main.humidity}%</p>
                         </div>
-                        <div style="padding: 16px; background: var(--bg-light); border-radius: 12px;">
-                            <i class="fas fa-wind" style="color: var(--primary-green); font-size: 1.5rem; margin-bottom: 8px;"></i>
+                        <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
+                            <i class="fas fa-wind" style="color: var(--primary-green); font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
                             <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Wind Speed</p>
-                            <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${data.wind.speed} m/s</p>
+                            <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${data.wind?.speed || 0} m/s</p>
+                        </div>
+                        <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
+                            <i class="fas fa-eye" style="color: var(--primary-green-light); font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
+                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Feels Like</p>
+                            <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${Math.round(data.main.feels_like)}°C</p>
                         </div>
                     </div>
-                    <p style="margin-top: 20px; color: var(--text-light); font-size: 0.9rem;">
-                        <i class="fas fa-map-marker-alt" style="color: var(--primary-green);"></i>
-                        ${data.name || 'Your Location'}
-                    </p>
                 `;
             })
-            .catch(() => {
-                weatherBox.innerHTML = `
-                    <p style="color: var(--text-light);">
-                        <i class="fas fa-exclamation-circle" style="color: var(--accent-orange); margin-right: 8px;"></i>
-                        Unable to load weather data. Please try again later.
-                    </p>
-                `;
+            .catch(error => {
+                console.error('Weather fetch error:', error);
+                // Try next fallback method
+                tryNextFallback();
             });
     }
 
-    function errorLocation() {
+    function tryNextFallback() {
+        // Fallback 1: User's stored coordinates from database
+        if (!isNaN(userLat) && !isNaN(userLon) && userLat !== 0 && userLon !== 0) {
+            console.log('Using user stored coordinates as fallback:', userLat, userLon);
+            fetchWeatherByLocation({ lat: userLat, lon: userLon }, 'coords');
+            return;
+        }
+
+        // Fallback 2: District/State from database
+        if (fallbackCity) {
+            console.log('Using district/state as fallback:', fallbackCity);
+            fetchWeatherByLocation(fallbackCity, 'city');
+        } else {
+            showLocationError();
+        }
+    }
+
+    function showLocationError() {
         weatherBox.innerHTML = `
-            <p style="color: var(--text-light);">
-                <i class="fas fa-map-marker-alt" style="color: var(--accent-orange); margin-right: 8px;"></i>
-                Location permission denied. Please enable location access to view weather.
-            </p>
+            <div style="text-align: center; padding: 20px;">
+                <i class="fas fa-map-marker-alt" style="color: var(--accent-orange); font-size: 2rem; margin-bottom: 12px; display: block;"></i>
+                <p style="color: var(--text-light); margin-bottom: 8px;">
+                    Unable to detect your location.
+                </p>
+                <p style="color: var(--text-light); font-size: 0.85rem;">
+                    Please enable location access in your browser settings to view weather for your current location.
+                </p>
+            </div>
         `;
+    }
+
+    // PRIORITY 1: Try browser geolocation first (automatic detection)
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                console.log('Auto-detected location via geolocation:', lat, lon);
+                fetchWeatherByLocation({ lat, lon }, 'coords');
+            },
+            function(error) {
+                console.log('Geolocation error:', error);
+                // If geolocation fails, try fallback methods
+                tryNextFallback();
+            },
+            { 
+                enableHighAccuracy: true, 
+                timeout: 15000, 
+                maximumAge: 0  // Always get fresh location
+            }
+        );
+    } else {
+        // Geolocation not supported - use fallback
+        console.log('Geolocation not supported, using fallback');
+        tryNextFallback();
     }
 });
 </script>
@@ -1352,31 +1458,37 @@ document.addEventListener('keydown', function(event) {
 
 <script>
 /* ================= MOBILE SIDEBAR TOGGLE ================= */
-function toggleSidebar() {
+// Make functions globally accessible
+window.toggleSidebar = function() {
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const menuIcon = document.getElementById('menuIcon');
     const body = document.body;
 
     if (sidebar && overlay) {
-        sidebar.classList.toggle('active');
-        overlay.classList.toggle('active');
-        body.classList.toggle('sidebar-open');
-
-        // Change icon between hamburger and X
-        if (menuIcon) {
-            if (sidebar.classList.contains('active')) {
-                menuIcon.classList.remove('fa-bars');
-                menuIcon.classList.add('fa-times');
-            } else {
+        const isActive = sidebar.classList.contains('active');
+        
+        if (isActive) {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            body.classList.remove('sidebar-open');
+            if (menuIcon) {
                 menuIcon.classList.remove('fa-times');
                 menuIcon.classList.add('fa-bars');
             }
+        } else {
+            sidebar.classList.add('active');
+            overlay.classList.add('active');
+            body.classList.add('sidebar-open');
+            if (menuIcon) {
+                menuIcon.classList.remove('fa-bars');
+                menuIcon.classList.add('fa-times');
+            }
         }
     }
-}
+};
 
-function closeSidebar() {
+window.closeSidebar = function() {
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const menuIcon = document.getElementById('menuIcon');
@@ -1393,19 +1505,102 @@ function closeSidebar() {
             menuIcon.classList.add('fa-bars');
         }
     }
-}
+};
 
 // Close sidebar when clicking on a sidebar link (mobile)
 document.addEventListener('DOMContentLoaded', function() {
-    const sidebarLinks = document.querySelectorAll('.sidebar a');
-    sidebarLinks.forEach(link => {
-        link.addEventListener('click', function() {
-            // Only close on mobile (screen width <= 768px)
-            if (window.innerWidth <= 768) {
+    // Function to handle sidebar link clicks - simplified
+    function handleSidebarClick(e) {
+        // Only close on mobile
+        if (window.innerWidth <= 768) {
+            // Small delay to allow the click to complete first
+            setTimeout(() => {
+                closeSidebar();
+            }, 150);
+        }
+    }
+    
+    // Use event delegation for better performance and reliability
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        // Handle clicks on any link or button in sidebar (bubble phase, not capture)
+        sidebar.addEventListener('click', function(e) {
+            const target = e.target.closest('a, button, .logout-btn, form');
+            
+            // Skip if clicking on close button (it has its own handler)
+            if (target && target.classList.contains('sidebar-close')) {
+                return;
+            }
+            
+            // Only close on mobile
+            if (target && window.innerWidth <= 768) {
+                // Don't prevent default - let the link/button work normally
+                // Use a longer delay to ensure onclick handlers execute first
+                setTimeout(() => {
+                    closeSidebar();
+                }, 300);
+            }
+        }, false); // Use bubble phase (default) to allow onclick handlers to fire first
+    }
+    
+    // Ensure hamburger button works - with multiple event types for mobile
+    const menuToggle = document.getElementById('menuToggle');
+    if (menuToggle) {
+        // Remove any existing listeners by cloning
+        const newToggle = menuToggle.cloneNode(true);
+        menuToggle.parentNode.replaceChild(newToggle, menuToggle);
+        
+        // Click event (works for both mouse and touch on modern devices)
+        newToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            if (window.toggleSidebar) {
+                window.toggleSidebar();
+            }
+        }, true); // Use capture phase
+        
+        // Touch events for better mobile support
+        newToggle.addEventListener('touchstart', function(e) {
+            e.stopPropagation();
+            this.style.opacity = '0.8';
+            this.style.transform = 'scale(0.95)';
+        }, { passive: true });
+        
+        newToggle.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            this.style.opacity = '1';
+            this.style.transform = '';
+            if (window.toggleSidebar) {
+                window.toggleSidebar();
+            }
+        }, { passive: false });
+        
+        // Prevent double-firing
+        let isToggling = false;
+        const originalToggle = window.toggleSidebar;
+        window.toggleSidebar = function() {
+            if (!isToggling) {
+                isToggling = true;
+                originalToggle();
+                setTimeout(() => {
+                    isToggling = false;
+                }, 300);
+            }
+        };
+    }
+    
+    // Handle overlay clicks
+    const overlay = document.getElementById('sidebarOverlay');
+    if (overlay) {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) {
                 closeSidebar();
             }
         });
-    });
+    }
 });
 
 // Close sidebar on window resize if it becomes desktop view
@@ -1420,3 +1615,4 @@ window.addEventListener('resize', function() {
 
 </body>
 </html>
+

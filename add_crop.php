@@ -37,173 +37,437 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
 <meta charset="UTF-8">
-<title>Add New Crop</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add New Crop | Smart Cultivation System</title>
 <!-- Google Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-body {
+/* Reset & Base */
+* {
     margin: 0;
     padding: 0;
-    font-family: 'Poppins', sans-serif;
-    background: linear-gradient(135deg, #00d2ff, #3a47d5, #00ff87, #00d2ff);
-    background-size: 400% 400%;
-    animation: bgAnimation 12s ease infinite;
-    color: #fff;
+    box-sizing: border-box;
 }
 
-/* Animated Gradient Background */
-@keyframes bgAnimation {
-    0% {background-position: 0% 50%;}
-    50% {background-position: 100% 50%;}
-    100% {background-position: 0% 50%;}
+:root {
+    --primary-green: #2d8659;
+    --primary-green-dark: #1f5d3f;
+    --primary-green-light: #3da372;
+    --secondary-green: #4caf50;
+    --accent-orange: #ff9800;
+    --text-dark: #2c3e50;
+    --text-light: #5a6c7d;
+    --bg-light: #f8f9fa;
+    --bg-white: #ffffff;
+    --border-color: #e0e0e0;
+    --error-color: #e74c3c;
+    --success-color: #27ae60;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.16);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Center Card */
-.container {
-    max-width: 550px;
-    margin: 70px auto;
-    padding: 30px;
-    background: rgba(255,255,255,0.12);
-    border-radius: 25px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-    backdrop-filter: blur(12px);
-    animation: fadeIn 1.2s ease;
+body {
+    font-family: 'Inter', 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
+    min-height: 100vh;
+    color: var(--text-dark);
+    line-height: 1.6;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* Fade Animation */
-@keyframes fadeIn {
-    from {opacity: 0; transform: translateY(25px);}
-    to {opacity: 1; transform: translateY(0);}
-}
-
-h2 {
-    text-align: center;
-    font-size: 2rem;
-    margin-bottom: 20px;
-    letter-spacing: 1px;
-}
-
-.msg {
-    background: rgba(0,0,0,0.2);
-    padding: 12px;
-    border-radius: 10px;
-    text-align: center;
-    margin-bottom: 15px;
-    font-weight: 600;
-}
-
-/* Inputs */
-input, select {
+/* Background Pattern */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
-    padding: 12px;
-    margin-top: 8px;
-    margin-bottom: 18px;
-    border: none;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 20% 50%, rgba(45, 134, 89, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(76, 175, 80, 0.03) 0%, transparent 50%);
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Container */
+.container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 600px;
+    background: var(--bg-white);
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    padding: 48px;
+    animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Header */
+.header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.header h1 {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--primary-green-dark);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.header h1 i {
+    color: var(--primary-green);
+    font-size: 36px;
+}
+
+.header p {
+    color: var(--text-light);
+    font-size: 15px;
+}
+
+/* Message Alert */
+.msg {
+    padding: 14px 18px;
     border-radius: 12px;
-    background: rgba(255,255,255,0.15);
-    color: #fff;
-    font-size: 1rem;
-    outline: none;
-    backdrop-filter: blur(8px);
-    transition: 0.3s;
+    margin-bottom: 24px;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideDown 0.3s ease-out;
 }
 
-/* Inputs Focus Effect */
-input:focus, select:focus {
-    background: rgba(255,255,255,0.25);
-    transform: scale(1.03);
-    box-shadow: 0 0 12px rgba(255,255,255,0.5);
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-/* Labels */
-label {
+.msg.success {
+    background: #e8f5e9;
+    color: var(--success-color);
+    border: 1px solid #c8e6c9;
+}
+
+.msg.error {
+    background: #fee;
+    color: var(--error-color);
+    border: 1px solid #fcc;
+}
+
+.msg i {
+    font-size: 18px;
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
     font-weight: 600;
-    font-size: 1rem;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+}
+
+.form-group label .required {
+    color: var(--error-color);
+    margin-left: 3px;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 15px;
+    font-family: inherit;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-white);
+    color: var(--text-dark);
+    transition: var(--transition);
+    outline: none;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 3px rgba(45, 134, 89, 0.1);
+}
+
+.form-group input::placeholder {
+    color: #999;
+}
+
+/* Form Row (for side-by-side fields if needed) */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
 }
 
 /* Button */
-button {
+.btn {
     width: 100%;
-    padding: 15px;
-    background: linear-gradient(135deg, #14ff72, #00d26a);
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 600;
     border: none;
-    color: #000;
-    font-size: 1.2rem;
-    font-weight: 700;
-    border-radius: 15px;
+    border-radius: 12px;
     cursor: pointer;
-    margin-top: 10px;
-    transition: 0.3s;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 8px;
 }
 
-button:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 18px #00ff9d;
+.btn-primary {
+    background: var(--primary-green);
+    color: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover {
+    background: var(--primary-green-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary i {
+    font-size: 18px;
 }
 
 /* Back Link */
 .back-link {
-    margin-top: 15px;
-    display: block;
-    text-align: center;
-    color: #fff;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-light);
     text-decoration: none;
-    font-size: 1.1rem;
+    font-size: 14px;
+    margin-top: 24px;
+    transition: var(--transition);
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+    border-radius: 8px;
 }
 
 .back-link:hover {
-    text-decoration: underline;
-    color: #d4fffa;
+    color: var(--primary-green);
+    background: var(--bg-light);
+}
+
+.back-link i {
+    font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 32px 24px;
+        margin: 10px;
+    }
+
+    .header h1 {
+        font-size: 28px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        padding: 24px 20px;
+    }
+
+    .header h1 {
+        font-size: 24px;
+    }
+}
+
+/* Icon decoration */
+.icon-decoration {
+    position: fixed;
+    font-size: 8rem;
+    color: rgba(45, 134, 89, 0.03);
+    z-index: 0;
+    pointer-events: none;
+}
+
+.icon-decoration:nth-child(1) {
+    top: 10%;
+    left: 5%;
+    animation: float 20s ease-in-out infinite;
+}
+
+.icon-decoration:nth-child(2) {
+    bottom: 10%;
+    right: 5%;
+    animation: float 25s ease-in-out infinite reverse;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-30px) rotate(10deg);
+    }
 }
 </style>
-
 </head>
-
 <body>
 
+<!-- Decorative Icons -->
+<i class="fas fa-seedling icon-decoration"></i>
+<i class="fas fa-leaf icon-decoration"></i>
+
 <div class="container">
+    <!-- Back Link -->
+    <a href="farmer_dashboard.php" class="back-link" style="margin-top: 0; margin-bottom: 24px; width: auto; justify-content: flex-start;">
+        <i class="fas fa-arrow-left"></i>
+        Back to Dashboard
+    </a>
 
-    <h2>🌾 Add New Crop</h2>
+    <!-- Header -->
+    <div class="header">
+        <h1>
+            <i class="fas fa-seedling"></i>
+            Add New Crop
+        </h1>
+        <p>Enter the details of your new crop to start tracking its growth</p>
+    </div>
 
-    <?php if ($message) echo "<div class='msg'>$message</div>"; ?>
+    <!-- Message Alert -->
+    <?php if ($message): ?>
+    <div class="msg <?php echo strpos($message, 'successfully') !== false ? 'success' : 'error'; ?>">
+        <i class="fas <?php echo strpos($message, 'successfully') !== false ? 'fa-check-circle' : 'fa-exclamation-circle'; ?>"></i>
+        <span><?php echo htmlspecialchars($message); ?></span>
+    </div>
+    <?php endif; ?>
 
-    <form method="POST">
+    <!-- Form -->
+    <form method="POST" id="addCropForm">
+        <div class="form-group">
+            <label for="crop_name">Crop Name <span class="required">*</span></label>
+            <input 
+                type="text" 
+                id="crop_name" 
+                name="crop_name" 
+                placeholder="e.g., Tomato, Rice, Wheat" 
+                required
+                autofocus
+            >
+        </div>
 
-        <label>Crop Name</label>
-        <input type="text" name="crop_name" placeholder="Enter crop name" required>
+        <div class="form-group">
+            <label for="variety">Variety <span class="required">*</span></label>
+            <input 
+                type="text" 
+                id="variety" 
+                name="variety" 
+                placeholder="e.g., Hybrid, Local, Improved" 
+                required
+            >
+        </div>
 
-        <label>Variety</label>
-        <input type="text" name="variety" placeholder="Seed variety" required>
+        <div class="form-group">
+            <label for="field">Field / Plot Location <span class="required">*</span></label>
+            <input 
+                type="text" 
+                id="field" 
+                name="field" 
+                placeholder="e.g., Field A, Plot 1, North Section" 
+                required
+            >
+        </div>
 
-        <label>Field / Plot Location</label>
-        <input type="text" name="field" placeholder="Field area or plot info" required>
+        <div class="form-group">
+            <label for="planting_date">Planting Date <span class="required">*</span></label>
+            <input 
+                type="date" 
+                id="planting_date" 
+                name="planting_date" 
+                required
+            >
+        </div>
 
-        <label>Planting Date</label>
-        <input type="date" name="planting_date" required>
+        <div class="form-group">
+            <label for="growth_stage">Growth Stage <span class="required">*</span></label>
+            <select id="growth_stage" name="growth_stage" required>
+                <option value="" disabled selected>Select current growth stage</option>
+                <option value="Seed">🌱 Seed</option>
+                <option value="Germination">🌿 Germination</option>
+                <option value="Vegetative">🌳 Vegetative</option>
+                <option value="Flowering">🌸 Flowering</option>
+                <option value="Harvest">🌾 Harvest</option>
+            </select>
+        </div>
 
-        <label>Growth Stage</label>
-        <select name="growth_stage" required>
-            <option value="" disabled selected>Select Stage</option>
-            <option value="Seed">Seed</option>
-            <option value="Germination">Germination</option>
-            <option value="Vegetative">Vegetative</option>
-            <option value="Flowering">Flowering</option>
-            <option value="Harvest">Harvest</option>
-        </select>
-
-        <button type="submit">➕ Add Crop</button>
-
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i>
+            Add Crop
+        </button>
     </form>
-
-    <a href="farmer_dashboard.php" class="back-link">⬅ Back to Dashboard</a>
-
 </div>
+
+<script>
+// Set today's date as max for planting date
+document.addEventListener('DOMContentLoaded', function() {
+    const plantingDateInput = document.getElementById('planting_date');
+    if (plantingDateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        plantingDateInput.setAttribute('max', today);
+    }
+});
+</script>
 
 </body>
 </html>

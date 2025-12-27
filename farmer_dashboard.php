@@ -1230,150 +1230,410 @@ body::before {
     </div>
 </div>
 <script>
-/* ================= WEATHER (AUTO-DETECT LOCATION) ================= */
+/* ================= WEATHER (HIGH ACCURACY GPS WITH MANUAL LOCATION FALLBACK) ================= */
 document.addEventListener("DOMContentLoaded", function () {
-
     const apiKey = "8939754260ab572788b1c798b4e89406";
     const weatherBox = document.getElementById("weatherBox");
+    const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes in milliseconds
 
     if (!weatherBox) return;
 
     // Get user's stored location from database (for fallback only)
     const userLat = parseFloat("<?php echo addslashes($user['latitude'] ?? ''); ?>");
     const userLon = parseFloat("<?php echo addslashes($user['longitude'] ?? ''); ?>");
-    const userDistrict = "<?php echo addslashes($user['district'] ?? ''); ?>";
-    const userState = "<?php echo addslashes($user['state'] ?? ''); ?>";
-    const userLocationAddress = "<?php echo addslashes($user['location_address'] ?? ''); ?>";
 
-    // Build fallback city name (district, state format for API)
-    let fallbackCity = '';
-    if (userDistrict && userState) {
-        fallbackCity = `${userDistrict}, ${userState}, IN`;
-    } else if (userDistrict) {
-        fallbackCity = `${userDistrict}, IN`;
-    } else if (userState) {
-        fallbackCity = `${userState}, IN`;
-    } else if (userLocationAddress) {
-        fallbackCity = userLocationAddress;
+    /**
+     * Get manual location from localStorage
+     */
+    function getManualLocation() {
+        try {
+            return localStorage.getItem('manualWeatherLocation');
+        } catch (e) {
+            console.warn('Error reading manual location:', e);
+        }
+        return null;
     }
 
-    function fetchWeatherByLocation(location, locationType = 'coords') {
-        let url = '';
-        
-        if (locationType === 'coords') {
-            // Use coordinates (lat, lon)
-            url = `https://api.openweathermap.org/data/2.5/weather?lat=${location.lat}&lon=${location.lon}&appid=${apiKey}&units=metric`;
-        } else {
-            // Use city name
-            url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(location)}&appid=${apiKey}&units=metric`;
+    /**
+     * Save manual location to localStorage
+     */
+    function saveManualLocation(cityName) {
+        try {
+            localStorage.setItem('manualWeatherLocation', cityName);
+            // Clear weather cache when location changes
+            localStorage.removeItem('weatherData');
+            localStorage.removeItem('weatherDataTime');
+        } catch (e) {
+            console.warn('Error saving manual location:', e);
         }
+    }
 
-        fetch(url)
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error('Weather API error: ' + res.status);
+    /**
+     * Check if cached weather data is still valid
+     */
+    function getCachedWeather() {
+        try {
+            const cached = localStorage.getItem('weatherData');
+            const cachedTime = localStorage.getItem('weatherDataTime');
+            
+            if (cached && cachedTime) {
+                const age = Date.now() - parseInt(cachedTime);
+                if (age < CACHE_DURATION) {
+                    return JSON.parse(cached);
                 }
-                return res.json();
-            })
-            .then(data => {
+            }
+        } catch (e) {
+            console.warn('Error reading cached weather:', e);
+        }
+        return null;
+    }
+
+    /**
+     * Save weather data to localStorage with timestamp
+     */
+    function cacheWeather(data) {
+        try {
+            localStorage.setItem('weatherData', JSON.stringify(data));
+            localStorage.setItem('weatherDataTime', Date.now().toString());
+        } catch (e) {
+            console.warn('Error caching weather data:', e);
+        }
+    }
+
+    /**
+     * Update the UI with weather data (includes Change Location link)
+     */
+    function updateWeatherUI(data) {
+        weatherBox.innerHTML = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png" alt="Weather Icon" style="width: 80px; height: 80px; display: block; margin: 0 auto;">
+            </div>
+            <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--primary-green-dark); margin-bottom: 8px; text-align: center; text-transform: capitalize;">
+                ${data.weather[0].description}
+            </h3>
+            <p style="text-align: center; color: var(--text-light); font-size: 0.9rem; margin-bottom: 12px;">
+                <i class="fas fa-map-marker-alt"></i> ${data.name || 'Current Location'}
+            </p>
+            <p style="text-align: center; margin-bottom: 20px;">
+                <a href="#" id="changeLocationLink" style="color: var(--primary-green); font-size: 0.85rem; text-decoration: none; border-bottom: 1px dashed var(--primary-green); cursor: pointer;">
+                    Change Location
+                </a>
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-top: 24px;">
+                <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
+                    <i class="fas fa-thermometer-half" style="color: var(--accent-orange); font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
+                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Temperature</p>
+                    <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${Math.round(data.main.temp)}°C</p>
+                </div>
+                <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
+                    <i class="fas fa-tint" style="color: #3498db; font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
+                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Humidity</p>
+                    <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${data.main.humidity}%</p>
+                </div>
+                <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
+                    <i class="fas fa-wind" style="color: var(--primary-green); font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
+                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Wind Speed</p>
+                    <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${(data.wind?.speed || 0).toFixed(1)} m/s</p>
+                </div>
+                <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
+                    <i class="fas fa-eye" style="color: var(--primary-green-light); font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
+                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Feels Like</p>
+                    <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${Math.round(data.main.feels_like)}°C</p>
+                </div>
+            </div>
+        `;
+
+        // Attach click handler to Change Location link
+        const changeLink = document.getElementById('changeLocationLink');
+        if (changeLink) {
+            changeLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                showLocationInput();
+            });
+        }
+    }
+
+    /**
+     * Show location input dialog
+     */
+    function showLocationInput() {
+        const manualLocation = getManualLocation();
+        const cityName = prompt('Enter your city name:\n\nExamples:\n- Anantapur\n- Anantapur, IN\n- Anantapur, Andhra Pradesh, IN', manualLocation || '');
+        
+        if (cityName && cityName.trim()) {
+            // Fetch weather for the manually entered city (it will try multiple variations)
+            fetchWeatherByCity(cityName.trim());
+        }
+    }
+
+    /**
+     * Geocode city name to get coordinates (more reliable than direct city name lookup)
+     */
+    async function geocodeCityName(cityName) {
+        const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(cityName)}&limit=1&appid=${apiKey}`;
+        
+        try {
+            const response = await fetch(geoUrl);
+            if (!response.ok) {
+                return null;
+            }
+            
+            const data = await response.json();
+            if (data && data.length > 0 && data[0].lat && data[0].lon) {
+                return {
+                    lat: data[0].lat,
+                    lon: data[0].lon,
+                    name: data[0].name
+                };
+            }
+        } catch (error) {
+            console.error('Geocoding error:', error);
+        }
+        return null;
+    }
+
+    /**
+     * Fetch weather using city name (only for manual input)
+     * First tries to geocode the city name to get coordinates, then uses coordinates for weather
+     */
+    async function fetchWeatherByCity(cityName) {
+        // Normalize the city name
+        let normalizedCity = cityName.trim();
+        
+        // Handle common misspellings and variations
+        const cityLower = normalizedCity.toLowerCase();
+        if (cityLower.includes('ananthapur') || cityLower === 'anantapur') {
+            normalizedCity = 'Anantapur';
+        }
+        // Handle Muchurami variations
+        if (cityLower.includes('muchurami') || cityLower.includes('muchuram')) {
+            normalizedCity = 'Muchurami';
+        }
+        
+        // Capitalize first letter properly
+        normalizedCity = normalizedCity.split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        ).join(' ');
+        
+        // Try multiple variations for geocoding (more comprehensive list)
+        const cityVariations = [
+            normalizedCity,                                    // "Muchurami"
+            normalizedCity + ', IN',                          // "Muchurami, IN"
+            normalizedCity + ', Andhra Pradesh, IN',          // "Muchurami, Andhra Pradesh, IN"
+            normalizedCity + ', AP, IN',                      // "Muchurami, AP, IN"
+            normalizedCity + ', Anantapur, Andhra Pradesh, IN', // "Muchurami, Anantapur, Andhra Pradesh, IN" (for villages near Anantapur)
+            cityName.trim(),                                   // Original input
+            cityName.trim() + ', IN'                          // Original input + country
+        ];
+        
+        // Remove duplicates
+        const uniqueVariations = [...new Set(cityVariations.filter(v => v.trim()))];
+        
+        // Try to geocode each variation
+        for (let i = 0; i < uniqueVariations.length; i++) {
+            const cityQuery = uniqueVariations[i];
+            console.log('Trying to geocode:', cityQuery);
+            
+            const coords = await geocodeCityName(cityQuery);
+            
+            if (coords) {
+                console.log('Geocoding successful, found coordinates:', coords.lat, coords.lon, 'for', coords.name);
+                // Use coordinates to fetch weather (more reliable)
+                await fetchWeatherByCoordinates(coords.lat, coords.lon);
+                // Save the successful city name
+                saveManualLocation(normalizedCity);
+                return; // Success!
+            }
+        }
+        
+        // If geocoding failed for all variations, try direct weather API call as last resort
+        console.log('Geocoding failed, trying direct weather API call');
+        
+        // Try direct API call with a few variations
+        const directVariations = [
+            normalizedCity + ', IN',
+            normalizedCity + ', Andhra Pradesh, IN',
+            normalizedCity
+        ];
+        
+        for (let i = 0; i < directVariations.length; i++) {
+            const cityQuery = directVariations[i];
+            const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(cityQuery)}&appid=${apiKey}&units=metric`;
+            
+            try {
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    if (i < directVariations.length - 1) continue;
+                    throw new Error(`Weather API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
                 if (data.cod && data.cod !== 200) {
+                    if (i < directVariations.length - 1) continue;
                     throw new Error(data.message || 'Weather data unavailable');
                 }
 
-                // Success - render weather data
-                weatherBox.innerHTML = `
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png" alt="Weather Icon" style="width: 80px; height: 80px; display: block; margin: 0 auto;">
-                    </div>
-                    <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--primary-green-dark); margin-bottom: 20px; text-align: center; text-transform: capitalize;">
-                        ${data.weather[0].description}
-                    </h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-top: 24px;">
-                        <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
-                            <i class="fas fa-thermometer-half" style="color: var(--accent-orange); font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
-                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Temperature</p>
-                            <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${Math.round(data.main.temp)}°C</p>
-                        </div>
-                        <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
-                            <i class="fas fa-tint" style="color: #3498db; font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
-                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Humidity</p>
-                            <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${data.main.humidity}%</p>
-                        </div>
-                        <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
-                            <i class="fas fa-wind" style="color: var(--primary-green); font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
-                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Wind Speed</p>
-                            <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${data.wind?.speed || 0} m/s</p>
-                        </div>
-                        <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
-                            <i class="fas fa-eye" style="color: var(--primary-green-light); font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
-                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Feels Like</p>
-                            <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${Math.round(data.main.feels_like)}°C</p>
-                        </div>
-                    </div>
-                `;
-            })
-            .catch(error => {
-                console.error('Weather fetch error:', error);
-                // Try next fallback method
-                tryNextFallback();
-            });
-    }
-
-    function tryNextFallback() {
-        // Fallback 1: User's stored coordinates from database
-        if (!isNaN(userLat) && !isNaN(userLon) && userLat !== 0 && userLon !== 0) {
-            console.log('Using user stored coordinates as fallback:', userLat, userLon);
-            fetchWeatherByLocation({ lat: userLat, lon: userLon }, 'coords');
-            return;
-        }
-
-        // Fallback 2: District/State from database
-        if (fallbackCity) {
-            console.log('Using district/state as fallback:', fallbackCity);
-            fetchWeatherByLocation(fallbackCity, 'city');
-        } else {
-            showLocationError();
+                // Success! Cache and update UI
+                cacheWeather(data);
+                updateWeatherUI(data);
+                saveManualLocation(normalizedCity);
+                return; // Success!
+                
+            } catch (error) {
+                if (i === directVariations.length - 1) {
+                    console.error('All weather fetch attempts failed:', error);
+                    // Show helpful error message
+                    const suggestions = cityLower.includes('muchurami') 
+                        ? '• "Muchurami, Anantapur, IN"\n• "Anantapur, IN" (nearby city)\n• Use GPS location instead'
+                        : `• "${normalizedCity}, IN"\n• "${normalizedCity}, Andhra Pradesh, IN"\n• Use GPS location instead`;
+                    
+                    alert('Unable to find "' + cityName + '".\n\nSmaller towns/villages may not be in the database.\n\nPlease try:\n' + suggestions);
+                    showLocationErrorWithChangeLink();
+                }
+            }
         }
     }
 
-    function showLocationError() {
+    /**
+     * Fetch weather from OpenWeatherMap API using coordinates (ALWAYS use this for GPS)
+     */
+    async function fetchWeatherByCoordinates(lat, lon) {
+        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
+
+        try {
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`Weather API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.cod && data.cod !== 200) {
+                throw new Error(data.message || 'Weather data unavailable');
+            }
+
+            // Cache the weather data
+            cacheWeather(data);
+            
+            // Update UI
+            updateWeatherUI(data);
+            
+        } catch (error) {
+            console.error('Weather fetch error:', error);
+            showLocationErrorWithChangeLink();
+        }
+    }
+
+    /**
+     * Show location error message with Change Location link
+     */
+    function showLocationErrorWithChangeLink() {
         weatherBox.innerHTML = `
             <div style="text-align: center; padding: 20px;">
                 <i class="fas fa-map-marker-alt" style="color: var(--accent-orange); font-size: 2rem; margin-bottom: 12px; display: block;"></i>
-                <p style="color: var(--text-light); margin-bottom: 8px;">
-                    Unable to detect your location.
+                <p style="color: var(--text-light); margin-bottom: 12px;">
+                    Unable to detect your location or fetch weather data.
                 </p>
-                <p style="color: var(--text-light); font-size: 0.85rem;">
-                    Please enable location access in your browser settings to view weather for your current location.
+                <p style="margin-top: 16px;">
+                    <a href="#" id="changeLocationLinkError" style="color: var(--primary-green); font-size: 0.9rem; text-decoration: none; border-bottom: 1px dashed var(--primary-green); cursor: pointer; font-weight: 600;">
+                        Change Location
+                    </a>
                 </p>
             </div>
         `;
+
+        // Attach click handler
+        const changeLink = document.getElementById('changeLocationLinkError');
+        if (changeLink) {
+            changeLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                showLocationInput();
+            });
+        }
     }
 
-    // PRIORITY 1: Try browser geolocation first (automatic detection)
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                console.log('Auto-detected location via geolocation:', lat, lon);
-                fetchWeatherByLocation({ lat, lon }, 'coords');
-            },
-            function(error) {
-                console.log('Geolocation error:', error);
-                // If geolocation fails, try fallback methods
-                tryNextFallback();
-            },
-            { 
-                enableHighAccuracy: true, 
-                timeout: 15000, 
-                maximumAge: 0  // Always get fresh location
+    /**
+     * Get location using browser geolocation with HIGH ACCURACY
+     */
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    console.log('GPS location detected (high accuracy):', lat, lon);
+                    
+                    // Always use coordinates from GPS, never city names
+                    fetchWeatherByCoordinates(lat, lon);
+                },
+                function(error) {
+                    console.warn(`Location error (${error.code}): ${error.message}`);
+                    
+                    // Check for manual location first
+                    const manualLocation = getManualLocation();
+                    if (manualLocation) {
+                        console.log('Using manual location:', manualLocation);
+                        fetchWeatherByCity(manualLocation);
+                        return;
+                    }
+                    
+                    // Check for database coordinates as fallback
+                    if (!isNaN(userLat) && !isNaN(userLon) && userLat !== 0 && userLon !== 0) {
+                        console.log('Using database coordinates as fallback:', userLat, userLon);
+                        fetchWeatherByCoordinates(userLat, userLon);
+                        return;
+                    }
+                    
+                    // Show error with Change Location option
+                    showLocationErrorWithChangeLink();
+                },
+                { 
+                    enableHighAccuracy: true,  // Force GPS/WiFi, not IP-based location
+                    timeout: 10000,            // 10 second timeout
+                    maximumAge: 0              // Always get fresh location, never use cached
+                }
+            );
+        } else {
+            console.warn('Geolocation is not supported by this browser.');
+            
+            // Check for manual location
+            const manualLocation = getManualLocation();
+            if (manualLocation) {
+                fetchWeatherByCity(manualLocation);
+                return;
             }
-        );
+            
+            // Check for database coordinates
+            if (!isNaN(userLat) && !isNaN(userLon) && userLat !== 0 && userLon !== 0) {
+                fetchWeatherByCoordinates(userLat, userLon);
+                return;
+            }
+            
+            showLocationErrorWithChangeLink();
+        }
+    }
+
+    // Priority 1: Check for cached weather data
+    const cached = getCachedWeather();
+    if (cached) {
+        console.log('Using cached weather data');
+        updateWeatherUI(cached);
+        
+        // Still fetch fresh data in background (but don't block UI)
+        getLocation();
     } else {
-        // Geolocation not supported - use fallback
-        console.log('Geolocation not supported, using fallback');
-        tryNextFallback();
+        // Priority 2: Check for manual location
+        const manualLocation = getManualLocation();
+        if (manualLocation) {
+            console.log('Using manual location:', manualLocation);
+            fetchWeatherByCity(manualLocation);
+        } else {
+            // Priority 3: Try GPS location
+            getLocation();
+        }
     }
 });
 </script>
@@ -1615,4 +1875,5 @@ window.addEventListener('resize', function() {
 
 </body>
 </html>
+
 

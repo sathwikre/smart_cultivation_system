@@ -65,31 +65,46 @@ if(isset($_POST['step']) && $_POST['step'] == 'request_otp'){
         $message = $translations['enter_email'] ?? "Please enter your email.";
     } else {
         $stmt = $conn->prepare("SELECT id, role FROM users WHERE email=? LIMIT 1");
-        $stmt->bind_param("s",$email);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        if($res && $res->num_rows > 0){
-            $user = $res->fetch_assoc();
-            $otp = generateOTP();
-            $expiry = date("Y-m-d H:i:s", strtotime("+5 minutes"));
-
-            $update = $conn->prepare("UPDATE users SET otp=?, otp_expiry=? WHERE id=?");
-            $update->bind_param("ssi",$otp,$expiry,$user['id']);
-            $update->execute();
-
-            $sent = sendOTPEmail($email, $otp, $translations);
-            if($sent === true){
-                $_SESSION['login_email'] = $email;
-                $_SESSION['login_role'] = $user['role'];
-                $message = $translations['otp_sent'] ?? "OTP sent to your email.";
-                $showForm = false;
+        if($stmt){
+            $stmt->bind_param("s",$email);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if($res && $res->num_rows > 0){
+                $user = $res->fetch_assoc();
+                $stmt->close(); // Close the SELECT statement before preparing UPDATE
+                
+                $otp = generateOTP();
+                $expiry = date("Y-m-d H:i:s", strtotime("+5 minutes"));
+                
+                $update = $conn->prepare("UPDATE users SET otp=?, otp_expiry=? WHERE id=?");
+                if($update){
+                    $update->bind_param("ssi", $otp, $expiry, $user['id']);
+                    if($update->execute()){
+                        $update->close();
+                        
+                        $sent = sendOTPEmail($email, $otp, $translations);
+                        if($sent === true){
+                            $_SESSION['login_email'] = $email;
+                            $_SESSION['login_role'] = $user['role'];
+                            $message = $translations['otp_sent'] ?? "OTP sent to your email.";
+                            $showForm = false;
+                        } else {
+                            $message = $translations['otp_failed'] ?? "Failed to send OTP: ".$sent;
+                        }
+                    } else {
+                        $message = $translations['otp_failed'] ?? "Database error: ".$update->error;
+                        $update->close();
+                    }
+                } else {
+                    $message = $translations['otp_failed'] ?? "Database error: ".$conn->error;
+                }
             } else {
-                $message = $translations['otp_failed'] ?? "Failed to send OTP: ".$sent;
+                $message = $translations['email_not_found'] ?? "Email not found. Please register first.";
+                $stmt->close();
             }
         } else {
-            $message = $translations['email_not_found'] ?? "Email not found. Please register first.";
+            $message = $translations['otp_failed'] ?? "Database error: ".$conn->error;
         }
-        $stmt->close();
     }
 }
 

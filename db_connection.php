@@ -15,6 +15,6 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Optional: set charset to UTF-8
+// Set charset to UTF-8
 $conn->set_charset("utf8mb4");
 ?>

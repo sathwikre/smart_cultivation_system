@@ -745,22 +745,30 @@ body::before {
 }
 
 /* Weather Card */
+#weather {
+    max-width: 100%;
+}
+
+#weather.section {
+    padding: 20px;
+}
+
 #weatherBox {
-    background: white;
-    padding: 30px;
-    border-radius: 16px;
-    box-shadow: var(--shadow-sm);
-    text-align: center;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    text-align: left;
     animation: fadeIn 1s ease-out;
+    max-width: 100%;
 }
 
 #weatherBox img {
-    animation: bounce 2s ease-in-out infinite;
+    transition: transform 0.3s ease;
 }
 
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+#weatherBox img:hover {
+    transform: scale(1.05);
 }
 
 /* Disease Recognition Button */
@@ -990,6 +998,29 @@ body::before {
 
     .kb-btn {
         width: 100%;
+    }
+
+    /* Weather forecast responsive */
+    .forecast-grid {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    .forecast-day {
+        padding: 12px 4px !important;
+    }
+
+    .forecast-day img {
+        width: 30px !important;
+        height: 30px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Weather forecast responsive for tablets */
+    .forecast-grid {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 10px !important;
     }
 }
 </style>
@@ -1235,6 +1266,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const apiKey = "8939754260ab572788b1c798b4e89406";
     const weatherBox = document.getElementById("weatherBox");
     const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes in milliseconds
+    
+    // Store current weather data globally for access in click handlers
+    let currentWeatherData = null;
 
     if (!weatherBox) return;
 
@@ -1279,7 +1313,13 @@ document.addEventListener("DOMContentLoaded", function () {
             if (cached && cachedTime) {
                 const age = Date.now() - parseInt(cachedTime);
                 if (age < CACHE_DURATION) {
-                    return JSON.parse(cached);
+                    const data = JSON.parse(cached);
+                    // Handle both old format (just current data) and new format (current + forecast)
+                    if (data.current) {
+                        return data; // New format
+                    } else {
+                        return { current: data, forecast: null }; // Old format, convert to new
+                    }
                 }
             }
         } catch (e) {
@@ -1289,57 +1329,247 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     /**
-     * Save weather data to localStorage with timestamp
+     * Format date for display
      */
-    function cacheWeather(data) {
-        try {
-            localStorage.setItem('weatherData', JSON.stringify(data));
-            localStorage.setItem('weatherDataTime', Date.now().toString());
-        } catch (e) {
-            console.warn('Error caching weather data:', e);
-        }
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return {
+            day: days[date.getDay()],
+            date: date.getDate(),
+            month: months[date.getMonth()],
+            full: days[date.getDay()] + ', ' + date.getDate() + ' ' + months[date.getMonth()]
+        };
     }
 
     /**
-     * Update the UI with weather data (includes Change Location link)
+     * Format time for display
+     */
+    function formatTime(dateString) {
+        const date = new Date(dateString);
+        let hours = date.getHours();
+        const ampm = hours >= 12 ? 'pm' : 'am';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return hours + ' ' + ampm;
+    }
+
+    /**
+     * Process forecast data for hourly and daily display
+     */
+    function processForecastData(forecastData) {
+        if (!forecastData || !forecastData.list) return { hourly: [], daily: [] };
+
+        const now = new Date();
+        const hourly = [];
+        const dailyMap = {};
+
+        // Process next 24 hours (8 data points = 24 hours)
+        forecastData.list.slice(0, 8).forEach(item => {
+            hourly.push({
+                time: formatTime(item.dt_txt),
+                temp: Math.round(item.main.temp),
+                icon: item.weather[0].icon
+            });
+        });
+
+        // Process daily forecast (group by date)
+        forecastData.list.forEach(item => {
+            const date = new Date(item.dt_txt);
+            const dateKey = date.toDateString();
+            
+            if (!dailyMap[dateKey]) {
+                dailyMap[dateKey] = {
+                    date: dateKey,
+                    dateObj: date,
+                    temps: [],
+                    icons: [],
+                    descriptions: []
+                };
+            }
+            
+            dailyMap[dateKey].temps.push(item.main.temp);
+            dailyMap[dateKey].icons.push(item.weather[0].icon);
+            dailyMap[dateKey].descriptions.push(item.weather[0].description);
+        });
+
+        // Convert to array and calculate daily averages
+        const daily = Object.values(dailyMap).slice(0, 7).map(day => {
+            const avgTemp = Math.round(day.temps.reduce((a, b) => a + b, 0) / day.temps.length);
+            const minTemp = Math.round(Math.min(...day.temps));
+            const maxTemp = Math.round(Math.max(...day.temps));
+            const mostCommonIcon = day.icons[Math.floor(day.icons.length / 2)]; // Use middle of day icon
+            
+            return {
+                day: formatDate(day.date).day,
+                date: day.dateObj.getDate(),
+                icon: mostCommonIcon,
+                max: maxTemp,
+                min: minTemp
+            };
+        });
+
+        return { hourly, daily };
+    }
+
+    /**
+     * Generate hourly temperature chart HTML
+     */
+    function generateHourlyChart(hourlyData) {
+        if (!hourlyData || hourlyData.length === 0) return '';
+
+        const temps = hourlyData.map(h => h.temp);
+        const minTemp = Math.min(...temps);
+        const maxTemp = Math.max(...temps);
+        const range = maxTemp - minTemp || 1;
+        const chartHeight = 80;
+
+        let chartHTML = '<div style="position: relative; height: ' + chartHeight + 'px; margin-bottom: 45px; padding: 0 8px;">';
+        
+        // Draw temperature line
+        chartHTML += '<svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" viewBox="0 0 800 ' + chartHeight + '">';
+        chartHTML += '<defs><linearGradient id="tempGradient" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:var(--accent-orange);stop-opacity:0.3" /><stop offset="100%" style="stop-color:var(--accent-orange);stop-opacity:0.05" /></linearGradient></defs>';
+        
+        // Generate path for temperature line
+        const points = hourlyData.map((h, i) => {
+            const x = (i / (hourlyData.length - 1)) * 800;
+            const y = chartHeight - ((h.temp - minTemp) / range) * (chartHeight - 40) - 20;
+            return x + ',' + y;
+        }).join(' ');
+        
+        chartHTML += '<path d="M ' + points + '" fill="none" stroke="var(--accent-orange)" stroke-width="3" />';
+        
+        // Fill area under curve
+        const areaPath = 'M ' + points + ' L 800,' + (chartHeight - 20) + ' L 0,' + (chartHeight - 20) + ' Z';
+        chartHTML += '<path d="' + areaPath + '" fill="url(#tempGradient)" />';
+        
+        // Add temperature points
+        hourlyData.forEach((h, i) => {
+            const x = (i / (hourlyData.length - 1)) * 800;
+            const y = chartHeight - ((h.temp - minTemp) / range) * (chartHeight - 40) - 20;
+            chartHTML += '<circle cx="' + x + '" cy="' + y + '" r="4" fill="var(--accent-orange)" />';
+        });
+        
+        chartHTML += '</svg>';
+        
+        // Add time labels and temperature values
+        chartHTML += '<div style="display: flex; justify-content: space-between; position: absolute; bottom: -38px; left: 0; right: 0; z-index: 2;">';
+        hourlyData.forEach((h, i) => {
+            chartHTML += '<div style="text-align: center; flex: 1;">';
+            chartHTML += '<div style="font-size: 0.65rem; font-weight: 600; color: var(--text-dark); margin-bottom: 2px;">' + h.temp + '°</div>';
+            chartHTML += '<div style="font-size: 0.6rem; color: var(--text-light);">' + h.time + '</div>';
+            chartHTML += '</div>';
+        });
+        chartHTML += '</div>';
+        chartHTML += '</div>';
+
+        return chartHTML;
+    }
+
+    /**
+     * Update the UI with weather data (Google Weather style)
      */
     function updateWeatherUI(data) {
+        // Store data globally for click handlers
+        currentWeatherData = data;
+        
+        const current = data.current || data;
+        const forecast = data.forecast;
+        const forecastProcessed = forecast ? processForecastData(forecast) : { hourly: [], daily: [] };
+        const today = new Date();
+        const currentTime = formatTime(today.toISOString());
+        const currentDate = formatDate(today.toISOString());
+
+        // Calculate precipitation (use forecast data if available)
+        const precipitation = forecast && forecast.list && forecast.list[0] && forecast.list[0].pop 
+            ? Math.round(forecast.list[0].pop * 100) 
+            : 0;
+
+        // Convert wind speed from m/s to km/h
+        const windSpeedKmh = current.wind ? Math.round((current.wind.speed * 3.6)) : 0;
+
         weatherBox.innerHTML = `
-            <div style="text-align: center; margin-bottom: 20px;">
-                <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png" alt="Weather Icon" style="width: 80px; height: 80px; display: block; margin: 0 auto;">
-            </div>
-            <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--primary-green-dark); margin-bottom: 8px; text-align: center; text-transform: capitalize;">
-                ${data.weather[0].description}
-            </h3>
-            <p style="text-align: center; color: var(--text-light); font-size: 0.9rem; margin-bottom: 12px;">
-                <i class="fas fa-map-marker-alt"></i> ${data.name || 'Current Location'}
-            </p>
-            <p style="text-align: center; margin-bottom: 20px;">
-                <a href="#" id="changeLocationLink" style="color: var(--primary-green); font-size: 0.85rem; text-decoration: none; border-bottom: 1px dashed var(--primary-green); cursor: pointer;">
-                    Change Location
-                </a>
-            </p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-top: 24px;">
-                <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
-                    <i class="fas fa-thermometer-half" style="color: var(--accent-orange); font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
-                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Temperature</p>
-                    <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${Math.round(data.main.temp)}°C</p>
+            <div style="background: white; border-radius: 12px; padding: 0; overflow: hidden;">
+                <!-- Header with location and change link -->
+                <div style="padding: 12px 16px 8px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-light); margin-bottom: 1px;">Results for ${current.name || 'Current Location'}</div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-dark);">Weather</div>
+                        <div style="font-size: 0.65rem; color: var(--text-light); margin-top: 1px;">
+                            ${currentDate.full}, ${currentTime}
+                        </div>
+                    </div>
+                    <div>
+                        <a href="#" id="changeLocationLink" style="color: var(--primary-green); font-size: 0.7rem; text-decoration: none; font-weight: 500;">
+                            Change Location
+                        </a>
+                    </div>
                 </div>
-                <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
-                    <i class="fas fa-tint" style="color: #3498db; font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
-                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Humidity</p>
-                    <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${data.main.humidity}%</p>
+
+                <!-- Current Weather Display -->
+                <div style="padding: 16px; background: linear-gradient(135deg, rgba(45, 134, 89, 0.05) 0%, rgba(255, 152, 0, 0.05) 100%);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <img src="https://openweathermap.org/img/wn/${current.weather[0].icon}@2x.png" alt="Weather Icon" style="width: 60px; height: 60px; flex-shrink: 0;">
+                            <div>
+                                <div style="font-size: 2rem; font-weight: 300; color: var(--text-dark); line-height: 1;">
+                                    ${Math.round(current.main.temp)}°<span style="font-size: 1rem; vertical-align: super;">C</span>
+                                </div>
+                                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-dark); margin-top: 4px; text-transform: capitalize;">
+                                    ${current.weather[0].description}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weather Details Row -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-light); margin-bottom: 3px;">Precipitation</div>
+                            <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-dark);">${precipitation}%</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-light); margin-bottom: 3px;">Humidity</div>
+                            <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-dark);">${current.main.humidity}%</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-light); margin-bottom: 3px;">Wind</div>
+                            <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-dark);">${windSpeedKmh} km/h</div>
+                        </div>
+                    </div>
                 </div>
-                <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
-                    <i class="fas fa-wind" style="color: var(--primary-green); font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
-                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Wind Speed</p>
-                    <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${(data.wind?.speed || 0).toFixed(1)} m/s</p>
+
+                <!-- Hourly Temperature Chart -->
+                ${forecastProcessed.hourly.length > 0 ? `
+                <div style="padding: 16px; border-top: 1px solid var(--border-color);" id="hourlyChartContainer">
+                    <h3 style="font-size: 0.8rem; font-weight: 600; color: var(--text-dark); margin-bottom: 12px;">Temperature</h3>
+                    <div id="hourlyChartContent">
+                        ${generateHourlyChart(forecastProcessed.hourly)}
+                    </div>
                 </div>
-                <div style="padding: 16px; background: var(--bg-light); border-radius: 12px; text-align: center; transition: var(--transition);">
-                    <i class="fas fa-eye" style="color: var(--primary-green-light); font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
-                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">Feels Like</p>
-                    <p style="margin: 4px 0 0 0; font-size: 1.3rem; font-weight: 700; color: var(--text-dark);">${Math.round(data.main.feels_like)}°C</p>
+                ` : ''}
+
+                <!-- 7-Day Forecast -->
+                ${forecastProcessed.daily.length > 0 ? `
+                <div style="padding: 16px; border-top: 1px solid var(--border-color);">
+                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;" class="forecast-grid" id="forecastGrid">
+                        ${forecastProcessed.daily.map((day, index) => `
+                            <div style="text-align: center; padding: 8px 4px; border-radius: 8px; ${index === 0 ? 'background: var(--bg-light);' : ''} transition: var(--transition); cursor: pointer;" 
+                                 class="forecast-day" 
+                                 data-day-index="${index}">
+                                <div style="font-size: 0.65rem; font-weight: 600; color: var(--text-dark); margin-bottom: 4px;">
+                                    ${index === 0 ? 'Today' : day.day}
+                                </div>
+                                <img src="https://openweathermap.org/img/wn/${day.icon}@2x.png" alt="Weather" style="width: 28px; height: 28px; margin: 4px auto; display: block;">
+                                <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-dark); margin-top: 4px;">
+                                    ${day.max}° <span style="color: var(--text-light); font-weight: 400;">${day.min}°</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
+                ` : ''}
             </div>
         `;
 
@@ -1350,6 +1580,121 @@ document.addEventListener("DOMContentLoaded", function () {
                 e.preventDefault();
                 showLocationInput();
             });
+        }
+
+        // Attach click handlers to forecast day buttons using event delegation
+        const forecastGrid = document.getElementById('forecastGrid');
+        if (forecastGrid) {
+            forecastGrid.addEventListener('click', function(e) {
+                const forecastDay = e.target.closest('.forecast-day');
+                if (!forecastDay) return;
+
+                e.preventDefault();
+                
+                const dayIndex = parseInt(forecastDay.getAttribute('data-day-index'));
+                
+                // Get all forecast day buttons
+                const forecastDays = document.querySelectorAll('.forecast-day');
+                
+                // Remove selected class and reset background from all days
+                forecastDays.forEach(day => {
+                    day.classList.remove('selected-day');
+                    const idx = parseInt(day.getAttribute('data-day-index'));
+                    if (idx === 0) {
+                        day.style.background = 'var(--bg-light)';
+                    } else {
+                        day.style.background = 'transparent';
+                    }
+                });
+                
+                // Add selected class to clicked day
+                forecastDay.classList.add('selected-day');
+                forecastDay.style.background = 'rgba(45, 134, 89, 0.15)';
+                
+                // Update hourly chart for selected day
+                if (currentWeatherData && currentWeatherData.forecast) {
+                    updateHourlyChartForDay(dayIndex, currentWeatherData.forecast);
+                }
+            });
+
+            // Add hover effects
+            forecastGrid.addEventListener('mouseover', function(e) {
+                const forecastDay = e.target.closest('.forecast-day');
+                if (forecastDay && !forecastDay.classList.contains('selected-day')) {
+                    forecastDay.style.background = 'var(--bg-light)';
+                }
+            });
+
+            forecastGrid.addEventListener('mouseout', function(e) {
+                const forecastDay = e.target.closest('.forecast-day');
+                if (forecastDay && !forecastDay.classList.contains('selected-day')) {
+                    const dayIndex = parseInt(forecastDay.getAttribute('data-day-index'));
+                    if (dayIndex === 0) {
+                        forecastDay.style.background = 'var(--bg-light)';
+                    } else {
+                        forecastDay.style.background = 'transparent';
+                    }
+                }
+            });
+        }
+    }
+
+    /**
+     * Update hourly chart for a specific day
+     */
+    function updateHourlyChartForDay(dayIndex, forecastData) {
+        if (!forecastData || !forecastData.list) return;
+
+        // Get the date for the selected day
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const selectedDate = new Date(today);
+        selectedDate.setDate(today.getDate() + dayIndex);
+        selectedDate.setHours(0, 0, 0, 0);
+        
+        // Filter forecast data for the selected day (next 24 hours from that day)
+        const selectedDayData = [];
+        const nextDay = new Date(selectedDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        
+        forecastData.list.forEach(item => {
+            const itemDate = new Date(item.dt_txt);
+            if (itemDate >= selectedDate && itemDate < nextDay) {
+                selectedDayData.push({
+                    time: formatTime(item.dt_txt),
+                    temp: Math.round(item.main.temp),
+                    icon: item.weather[0].icon
+                });
+            }
+        });
+
+        // If no data for that day, use next 8 hours from start of day
+        if (selectedDayData.length === 0 && dayIndex === 0) {
+            // For today, use next 8 data points
+            forecastData.list.slice(0, 8).forEach(item => {
+                selectedDayData.push({
+                    time: formatTime(item.dt_txt),
+                    temp: Math.round(item.main.temp),
+                    icon: item.weather[0].icon
+                });
+            });
+        } else if (selectedDayData.length === 0) {
+            // For future days, try to get data points closest to that day
+            const startIdx = dayIndex * 8; // Approximate 8 data points per day
+            forecastData.list.slice(startIdx, startIdx + 8).forEach(item => {
+                selectedDayData.push({
+                    time: formatTime(item.dt_txt),
+                    temp: Math.round(item.main.temp),
+                    icon: item.weather[0].icon
+                });
+            });
+        }
+
+        // Update the hourly chart HTML
+        const chartContent = document.getElementById('hourlyChartContent');
+        if (chartContent && selectedDayData.length > 0) {
+            const chartHTML = generateHourlyChart(selectedDayData);
+            chartContent.innerHTML = chartHTML;
         }
     }
 
@@ -1362,7 +1707,7 @@ document.addEventListener("DOMContentLoaded", function () {
         
         if (cityName && cityName.trim()) {
             // Fetch weather for the manually entered city (it will try multiple variations)
-            fetchWeatherByCity(cityName.trim());
+            fetchWeatherByCityWithForecast(cityName.trim());
         }
     }
 
@@ -1475,9 +1820,39 @@ document.addEventListener("DOMContentLoaded", function () {
                     throw new Error(data.message || 'Weather data unavailable');
                 }
 
-                // Success! Cache and update UI
-                cacheWeather(data);
-                updateWeatherUI(data);
+                // Try to get forecast data
+                try {
+                    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(cityQuery)}&appid=${apiKey}&units=metric`;
+                    const forecastResponse = await fetch(forecastUrl);
+                    const forecastData = await forecastResponse.json();
+                    
+                    const combinedData = {
+                        current: data,
+                        forecast: forecastData.cod === '200' ? forecastData : null
+                    };
+                    
+                    try {
+                        localStorage.setItem('weatherData', JSON.stringify(combinedData));
+                        localStorage.setItem('weatherDataTime', Date.now().toString());
+                    } catch (e) {
+                        console.warn('Error caching weather data:', e);
+                    }
+                    
+                    updateWeatherUI(combinedData);
+                } catch (forecastError) {
+                    // If forecast fails, still show current weather
+                    const combinedData = {
+                        current: data,
+                        forecast: null
+                    };
+                    try {
+                        localStorage.setItem('weatherData', JSON.stringify(combinedData));
+                        localStorage.setItem('weatherDataTime', Date.now().toString());
+                    } catch (e) {
+                        console.warn('Error caching weather data:', e);
+                    }
+                    updateWeatherUI(combinedData);
+                }
                 saveManualLocation(normalizedCity);
                 return; // Success!
                 
@@ -1497,29 +1872,43 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     /**
-     * Fetch weather from OpenWeatherMap API using coordinates (ALWAYS use this for GPS)
+     * Fetch weather and forecast from OpenWeatherMap API using coordinates
      */
     async function fetchWeatherByCoordinates(lat, lon) {
-        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
-
         try {
-            const response = await fetch(url);
+            // Fetch both current weather and forecast
+            const [currentResponse, forecastResponse] = await Promise.all([
+                fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`),
+                fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`)
+            ]);
             
-            if (!response.ok) {
-                throw new Error(`Weather API error: ${response.status} ${response.statusText}`);
+            if (!currentResponse.ok || !forecastResponse.ok) {
+                throw new Error('Weather API error');
             }
 
-            const data = await response.json();
+            const currentData = await currentResponse.json();
+            const forecastData = await forecastResponse.json();
             
-            if (data.cod && data.cod !== 200) {
-                throw new Error(data.message || 'Weather data unavailable');
+            if (currentData.cod && currentData.cod !== 200) {
+                throw new Error(currentData.message || 'Weather data unavailable');
             }
+
+            // Combine current and forecast data
+            const combinedData = {
+                current: currentData,
+                forecast: forecastData
+            };
 
             // Cache the weather data
-            cacheWeather(data);
+            try {
+                localStorage.setItem('weatherData', JSON.stringify(combinedData));
+                localStorage.setItem('weatherDataTime', Date.now().toString());
+            } catch (e) {
+                console.warn('Error caching weather data:', e);
+            }
             
-            // Update UI
-            updateWeatherUI(data);
+            // Update UI with both current and forecast
+            updateWeatherUI(combinedData);
             
         } catch (error) {
             console.error('Weather fetch error:', error);
@@ -1556,6 +1945,48 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     /**
+     * Fetch weather using city name (with forecast)
+     */
+    async function fetchWeatherByCityWithForecast(cityName) {
+        // First geocode to get coordinates, then fetch weather with coordinates
+        const coords = await geocodeCityName(cityName);
+        if (coords) {
+            await fetchWeatherByCoordinates(coords.lat, coords.lon);
+        } else {
+            // If geocoding fails, try direct API call
+            try {
+                const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(cityName)}&appid=${apiKey}&units=metric`;
+                const response = await fetch(url);
+                const currentData = await response.json();
+                
+                if (currentData.cod === 200) {
+                    // Try to get forecast using city name
+                    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(cityName)}&appid=${apiKey}&units=metric`;
+                    const forecastResponse = await fetch(forecastUrl);
+                    const forecastData = await forecastResponse.json();
+                    
+                    const combinedData = {
+                        current: currentData,
+                        forecast: forecastData.cod === '200' ? forecastData : null
+                    };
+                    
+                    try {
+                        localStorage.setItem('weatherData', JSON.stringify(combinedData));
+                        localStorage.setItem('weatherDataTime', Date.now().toString());
+                    } catch (e) {
+                        console.warn('Error caching weather data:', e);
+                    }
+                    
+                    updateWeatherUI(combinedData);
+                }
+            } catch (error) {
+                console.error('Weather fetch error:', error);
+                showLocationErrorWithChangeLink();
+            }
+        }
+    }
+
+    /**
      * Get location using browser geolocation with HIGH ACCURACY
      */
     function getLocation() {
@@ -1576,7 +2007,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     const manualLocation = getManualLocation();
                     if (manualLocation) {
                         console.log('Using manual location:', manualLocation);
-                        fetchWeatherByCity(manualLocation);
+                        fetchWeatherByCityWithForecast(manualLocation);
                         return;
                     }
                     
@@ -1602,7 +2033,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // Check for manual location
             const manualLocation = getManualLocation();
             if (manualLocation) {
-                fetchWeatherByCity(manualLocation);
+                fetchWeatherByCityWithForecast(manualLocation);
                 return;
             }
             
@@ -1629,7 +2060,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const manualLocation = getManualLocation();
         if (manualLocation) {
             console.log('Using manual location:', manualLocation);
-            fetchWeatherByCity(manualLocation);
+            fetchWeatherByCityWithForecast(manualLocation);
         } else {
             // Priority 3: Try GPS location
             getLocation();

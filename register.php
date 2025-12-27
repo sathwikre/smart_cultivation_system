@@ -58,72 +58,139 @@ function userExists($conn, $username, $email) {
 }
 
 $message = '';
+// Get current step from GET parameter or default to 1
+if (isset($_GET['step'])) {
+    $currentStep = (int)$_GET['step'];
+    // Ensure step is valid (1-3)
+    if ($currentStep < 1 || $currentStep > 3) {
+        $currentStep = 1;
+    }
+} else {
+    $currentStep = 1;
+}
+
+// Validate step access - user must complete previous steps
+if (!isset($_SESSION['reg_data'])) {
+    $_SESSION['reg_data'] = [];
+}
+
+// Check if user can access the requested step
+if ($currentStep == 2 && (!isset($_SESSION['reg_data']['fullname']) || !isset($_SESSION['reg_data']['email']))) {
+    $currentStep = 1;
+    $message = "Please complete Step 1 first";
+} elseif ($currentStep == 3 && (!isset($_SESSION['reg_data']['aadhar']) || !isset($_SESSION['reg_data']['location']))) {
+    $currentStep = 2;
+    $message = "Please complete Step 2 first";
+}
+
 $showForm = true;
 
+// Initialize registration data in session if not exists
+if (!isset($_SESSION['reg_data'])) {
+    $_SESSION['reg_data'] = [];
+}
+
 /* =========================
-   STEP 1: REGISTER
+   STEP 1: BASIC INFORMATION
    ========================= */
-if (isset($_POST['step']) && $_POST['step'] === 'register') {
-
-    $required = [
-        'fullname','username','email','mobile','password',
-        'confirm_password','role','age','gender',
-        'aadhar','caste','total_land',
-        'latitude','longitude','location_name'
-    ];
-
+if (isset($_POST['form_step']) && $_POST['form_step'] === '1') {
+    $required = ['fullname', 'username', 'email', 'mobile', 'age', 'gender'];
+    
     foreach ($required as $r) {
         if (empty($_POST[$r])) {
-            $message = "Please fill all fields";
+            $message = "Please fill all fields in Step 1";
+            $currentStep = 1;
             goto render;
         }
     }
 
-    if ($_POST['password'] !== $_POST['confirm_password']) {
-        $message = "Passwords do not match";
-        goto render;
-    }
-
     if (userExists($conn, $_POST['username'], $_POST['email'])) {
         $message = "Username or Email already exists";
+        $currentStep = 1;
         goto render;
     }
 
-    $_SESSION['reg_data'] = [
-        'fullname'  => $_POST['fullname'],
-        'username'  => $_POST['username'],
-        'email'     => $_POST['email'],
-        'mobile'    => $_POST['mobile'],
-        'password'  => password_hash($_POST['password'], PASSWORD_DEFAULT),
-        'role'      => $_POST['role'],
-        'district'  => $_POST['district'] ?? '',
-        'age'       => $_POST['age'],
-        'gender'    => $_POST['gender'],
-        'aadhar'    => $_POST['aadhar'],
-        'caste'     => $_POST['caste'],
-        'total_land'=> $_POST['total_land'],
-        'latitude'  => $_POST['latitude'],
-        'longitude' => $_POST['longitude'],
-        'location'  => $_POST['location_name']
-    ];
+    $_SESSION['reg_data']['fullname'] = $_POST['fullname'];
+    $_SESSION['reg_data']['username'] = $_POST['username'];
+    $_SESSION['reg_data']['email'] = $_POST['email'];
+    $_SESSION['reg_data']['mobile'] = $_POST['mobile'];
+    $_SESSION['reg_data']['age'] = $_POST['age'];
+    $_SESSION['reg_data']['gender'] = $_POST['gender'];
 
+    header("Location: register.php?step=2");
+    exit;
+}
+
+/* =========================
+   STEP 2: PERSONAL & LAND DETAILS
+   ========================= */
+if (isset($_POST['form_step']) && $_POST['form_step'] === '2') {
+    $required = ['aadhar', 'caste', 'total_land', 'role', 'location_name'];
+    
+    foreach ($required as $r) {
+        if (empty($_POST[$r])) {
+            $message = "Please fill all fields in Step 2";
+            $currentStep = 2;
+            goto render;
+        }
+    }
+
+    $_SESSION['reg_data']['aadhar'] = $_POST['aadhar'];
+    $_SESSION['reg_data']['caste'] = $_POST['caste'];
+    $_SESSION['reg_data']['total_land'] = $_POST['total_land'];
+    $_SESSION['reg_data']['role'] = $_POST['role'];
+    $_SESSION['reg_data']['location'] = $_POST['location_name'];
+    $_SESSION['reg_data']['latitude'] = $_POST['latitude'] ?? '17.3850';
+    $_SESSION['reg_data']['longitude'] = $_POST['longitude'] ?? '78.4867';
+    $_SESSION['reg_data']['district'] = $_POST['district'] ?? '';
+
+    header("Location: register.php?step=3");
+    exit;
+}
+
+/* =========================
+   STEP 3: ACCOUNT SECURITY & SUBMIT
+   ========================= */
+if (isset($_POST['form_step']) && $_POST['form_step'] === '3') {
+    if (empty($_POST['password']) || empty($_POST['confirm_password'])) {
+        $message = "Please fill password fields";
+        $currentStep = 3;
+        goto render;
+    }
+
+    if ($_POST['password'] !== $_POST['confirm_password']) {
+        $message = "Passwords do not match";
+        $currentStep = 3;
+        goto render;
+    }
+
+    if (strlen($_POST['password']) < 8) {
+        $message = "Password must be at least 8 characters";
+        $currentStep = 3;
+        goto render;
+    }
+
+    $_SESSION['reg_data']['password'] = password_hash($_POST['password'], PASSWORD_DEFAULT);
+
+    // All steps complete, send OTP
     $_SESSION['otp'] = generateOTP();
     $_SESSION['otp_time'] = time();
 
-    $sent = sendOTPEmail($_POST['email'], $_SESSION['otp']);
+    $sent = sendOTPEmail($_SESSION['reg_data']['email'], $_SESSION['otp']);
 
     if ($sent === true) {
         $showForm = false;
         $message = "OTP sent to your email";
     } else {
         $message = "OTP sending failed: $sent";
+        $currentStep = 3;
     }
 }
 
 /* =========================
-   STEP 2: VERIFY OTP
+   STEP 4: VERIFY OTP
    ========================= */
-if (isset($_POST['step']) && $_POST['step'] === 'verify_otp') {
+if (isset($_POST['form_step']) && $_POST['form_step'] === 'verify_otp') {
 
     if (
         isset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['reg_data']) &&
@@ -132,6 +199,23 @@ if (isset($_POST['step']) && $_POST['step'] === 'verify_otp') {
     ) {
 
         $d = $_SESSION['reg_data'];
+
+        // Ensure all required values exist with defaults
+        $district = $d['district'] ?? '';
+        $fullname = $d['fullname'];
+        $username = $d['username'];
+        $email = $d['email'];
+        $password = $d['password'];
+        $role = $d['role'];
+        $mobile = $d['mobile'];
+        $age = $d['age'];
+        $gender = $d['gender'];
+        $aadhar = $d['aadhar'];
+        $caste = $d['caste'];
+        $total_land = $d['total_land'];
+        $latitude = $d['latitude'];
+        $longitude = $d['longitude'];
+        $location = $d['location'];
 
         $stmt = $conn->prepare("
             INSERT INTO users
@@ -143,21 +227,21 @@ if (isset($_POST['step']) && $_POST['step'] === 'verify_otp') {
 
        $stmt->bind_param(
     "sssssssisssddds",
-    $d['fullname'],
-    $d['username'],
-    $d['email'],
-    $d['password'],
-    $d['role'],
-    $d['mobile'],
-    $d['district'],
-    $d['age'],
-    $d['gender'],
-    $d['aadhar'],
-    $d['caste'],
-    $d['total_land'],
-    $d['latitude'],
-    $d['longitude'],
-    $d['location']
+    $fullname,
+    $username,
+    $email,
+    $password,
+    $role,
+    $mobile,
+    $district,
+    $age,
+    $gender,
+    $aadhar,
+    $caste,
+    $total_land,
+    $latitude,
+    $longitude,
+    $location
 );
 
 
@@ -522,6 +606,29 @@ body::before {
     .form-row {
         grid-template-columns: 1fr;
     }
+
+    .progress-steps {
+        margin-bottom: 24px;
+    }
+
+    .step-label {
+        font-size: 10px;
+    }
+
+    .step-circle {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+
+    .form-navigation {
+        flex-direction: column-reverse;
+    }
+
+    .btn-nav {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 @media (max-width: 480px) {
@@ -543,6 +650,176 @@ body::before {
     font-size: 12px;
     color: var(--text-light);
     margin-top: 6px;
+}
+
+/* Progress Indicator */
+.progress-container {
+    margin-bottom: 40px;
+}
+
+.progress-steps {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.progress-steps::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--border-color);
+    z-index: 0;
+}
+
+.progress-line {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    height: 3px;
+    background: var(--primary-green);
+    z-index: 1;
+    transition: width 0.4s ease;
+}
+
+.step-item {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.step-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-light);
+    transition: var(--transition);
+    margin-bottom: 8px;
+}
+
+.step-item.active .step-circle {
+    border-color: var(--primary-green);
+    background: var(--primary-green);
+    color: white;
+}
+
+.step-item.completed .step-circle {
+    border-color: var(--primary-green);
+    background: var(--primary-green);
+    color: white;
+}
+
+.step-item.completed .step-circle::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+}
+
+.step-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-light);
+    text-align: center;
+    margin-top: 4px;
+}
+
+.step-item.active .step-label {
+    color: var(--primary-green);
+}
+
+.step-item.completed .step-label {
+    color: var(--primary-green);
+}
+
+/* Form Steps */
+.form-step {
+    display: none;
+    animation: fadeIn 0.4s ease;
+}
+
+.form-step.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Navigation Buttons */
+.form-navigation {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    justify-content: space-between;
+}
+
+.btn-nav {
+    padding: 14px 32px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-next {
+    background: var(--primary-green);
+    color: white;
+    box-shadow: var(--shadow-sm);
+    margin-left: auto;
+}
+
+.btn-next:hover {
+    background: var(--primary-green-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-prev {
+    background: var(--bg-light);
+    color: var(--text-dark);
+    border: 2px solid var(--border-color);
+}
+
+.btn-prev:hover {
+    background: var(--bg-white);
+    border-color: var(--primary-green);
+    color: var(--primary-green);
+}
+
+.btn-nav:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-nav:disabled:hover {
+    transform: none;
 }
 </style>
 </head>
@@ -570,102 +847,160 @@ body::before {
     <?php endif; ?>
 
     <?php if ($showForm): ?>
+    <!-- Progress Indicator -->
+    <div class="progress-container">
+        <div class="progress-steps">
+            <div class="progress-line" style="width: <?php echo (($currentStep - 1) / 3) * 100; ?>%"></div>
+            <div class="step-item <?php echo $currentStep >= 1 ? ($currentStep > 1 ? 'completed' : 'active') : ''; ?>">
+                <div class="step-circle"><?php echo $currentStep > 1 ? '' : '1'; ?></div>
+                <div class="step-label">Basic Info</div>
+            </div>
+            <div class="step-item <?php echo $currentStep >= 2 ? ($currentStep > 2 ? 'completed' : 'active') : ''; ?>">
+                <div class="step-circle"><?php echo $currentStep > 2 ? '' : '2'; ?></div>
+                <div class="step-label">Personal Details</div>
+            </div>
+            <div class="step-item <?php echo $currentStep >= 3 ? 'active' : ''; ?>">
+                <div class="step-circle"><?php echo $currentStep > 3 ? '' : '3'; ?></div>
+                <div class="step-label">Security</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Registration Form -->
     <form method="POST" id="registerForm">
-        <input type="hidden" name="step" value="register">
+        <input type="hidden" name="form_step" id="form_step" value="<?php echo $currentStep; ?>">
+        <!-- STEP 1: Basic Information -->
+        <div class="form-step <?php echo $currentStep == 1 ? 'active' : ''; ?>" id="step1">
+            <h2 style="font-size: 20px; font-weight: 700; color: var(--text-dark); margin-bottom: 24px;">
+                <i class="fas fa-user" style="color: var(--primary-green); margin-right: 8px;"></i>
+                Basic Information
+            </h2>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label for="fullname"><?php echo $translations['fullname'] ?? 'Full Name'; ?> <span class="required">*</span></label>
-                <input type="text" id="fullname" name="fullname" placeholder="<?php echo $translations['fullname'] ?? 'Enter your full name'; ?>" required>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="fullname"><?php echo $translations['fullname'] ?? 'Full Name'; ?> <span class="required">*</span></label>
+                    <input type="text" id="fullname" name="fullname" value="<?php echo $_SESSION['reg_data']['fullname'] ?? ''; ?>" placeholder="<?php echo $translations['fullname'] ?? 'Enter your full name'; ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="username"><?php echo $translations['username'] ?? 'Username'; ?> <span class="required">*</span></label>
+                    <input type="text" id="username" name="username" value="<?php echo $_SESSION['reg_data']['username'] ?? ''; ?>" placeholder="<?php echo $translations['username'] ?? 'Choose a username'; ?>" required>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="username"><?php echo $translations['username'] ?? 'Username'; ?> <span class="required">*</span></label>
-                <input type="text" id="username" name="username" placeholder="<?php echo $translations['username'] ?? 'Choose a username'; ?>" required>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="email"><?php echo $translations['email'] ?? 'Email'; ?> <span class="required">*</span></label>
+                    <input type="email" id="email" name="email" value="<?php echo $_SESSION['reg_data']['email'] ?? ''; ?>" placeholder="<?php echo $translations['email'] ?? 'your.email@example.com'; ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="mobile"><?php echo $translations['mobile'] ?? 'Mobile Number'; ?> <span class="required">*</span></label>
+                    <input type="tel" id="mobile" name="mobile" value="<?php echo $_SESSION['reg_data']['mobile'] ?? ''; ?>" placeholder="<?php echo $translations['mobile'] ?? '10-digit mobile number'; ?>" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="age"><?php echo $translations['age'] ?? 'Age'; ?> <span class="required">*</span></label>
+                    <input type="number" id="age" name="age" value="<?php echo $_SESSION['reg_data']['age'] ?? ''; ?>" placeholder="<?php echo $translations['age'] ?? 'Age'; ?>" min="18" max="100" required>
+                </div>
+                <div class="form-group">
+                    <label for="gender"><?php echo $translations['gender'] ?? 'Gender'; ?> <span class="required">*</span></label>
+                    <select id="gender" name="gender" required>
+                        <option value=""><?php echo $translations['select_gender'] ?? 'Select Gender'; ?></option>
+                        <option value="Male" <?php echo (isset($_SESSION['reg_data']['gender']) && $_SESSION['reg_data']['gender'] == 'Male') ? 'selected' : ''; ?>><?php echo $translations['male'] ?? 'Male'; ?></option>
+                        <option value="Female" <?php echo (isset($_SESSION['reg_data']['gender']) && $_SESSION['reg_data']['gender'] == 'Female') ? 'selected' : ''; ?>><?php echo $translations['female'] ?? 'Female'; ?></option>
+                        <option value="Other" <?php echo (isset($_SESSION['reg_data']['gender']) && $_SESSION['reg_data']['gender'] == 'Other') ? 'selected' : ''; ?>><?php echo $translations['other'] ?? 'Other'; ?></option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-navigation">
+                <div></div>
+                <button type="submit" class="btn-nav btn-next" onclick="document.getElementById('form_step').value='1'; return true;">
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label for="email"><?php echo $translations['email'] ?? 'Email'; ?> <span class="required">*</span></label>
-                <input type="email" id="email" name="email" placeholder="<?php echo $translations['email'] ?? 'your.email@example.com'; ?>" required>
+        <!-- STEP 2: Personal & Land Details -->
+        <div class="form-step <?php echo $currentStep == 2 ? 'active' : ''; ?>" id="step2">
+            <h2 style="font-size: 20px; font-weight: 700; color: var(--text-dark); margin-bottom: 24px;">
+                <i class="fas fa-landmark" style="color: var(--primary-green); margin-right: 8px;"></i>
+                Personal & Land Details
+            </h2>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="aadhar"><?php echo $translations['aadhar'] ?? 'Aadhar Number'; ?> <span class="required">*</span></label>
+                    <input type="text" id="aadhar" name="aadhar" value="<?php echo $_SESSION['reg_data']['aadhar'] ?? ''; ?>" placeholder="<?php echo $translations['aadhar'] ?? '12-digit Aadhar'; ?>" maxlength="12" <?php echo $currentStep == 2 ? 'required' : ''; ?>>
+                </div>
+                <div class="form-group">
+                    <label for="caste"><?php echo $translations['caste'] ?? 'Caste'; ?> <span class="required">*</span></label>
+                    <input type="text" id="caste" name="caste" value="<?php echo $_SESSION['reg_data']['caste'] ?? ''; ?>" placeholder="<?php echo $translations['caste'] ?? 'Enter caste'; ?>" <?php echo $currentStep == 2 ? 'required' : ''; ?>>
+                </div>
             </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="total_land"><?php echo $translations['total_land'] ?? 'Total Land (acres)'; ?> <span class="required">*</span></label>
+                    <input type="number" id="total_land" name="total_land" value="<?php echo $_SESSION['reg_data']['total_land'] ?? ''; ?>" placeholder="<?php echo $translations['total_land'] ?? 'Land in acres'; ?>" step="0.01" min="0" <?php echo $currentStep == 2 ? 'required' : ''; ?>>
+                </div>
+                <div class="form-group">
+                    <label for="role"><?php echo $translations['role'] ?? 'Role'; ?> <span class="required">*</span></label>
+                    <select id="role" name="role" <?php echo $currentStep == 2 ? 'required' : ''; ?>>
+                        <option value="farmer" <?php echo (isset($_SESSION['reg_data']['role']) && $_SESSION['reg_data']['role'] == 'farmer') ? 'selected' : ''; ?>><?php echo $translations['farmer'] ?? 'Farmer'; ?></option>
+                        <option value="admin" <?php echo (isset($_SESSION['reg_data']['role']) && $_SESSION['reg_data']['role'] == 'admin') ? 'selected' : ''; ?>><?php echo $translations['admin'] ?? 'Admin'; ?></option>
+                    </select>
+                </div>
+            </div>
+
             <div class="form-group">
-                <label for="mobile"><?php echo $translations['mobile'] ?? 'Mobile Number'; ?> <span class="required">*</span></label>
-                <input type="tel" id="mobile" name="mobile" placeholder="<?php echo $translations['mobile'] ?? '10-digit mobile number'; ?>" required>
+                <label for="location_name"><?php echo $translations['location'] ?? 'Location'; ?> <span class="required">*</span></label>
+                <input type="text" id="location_name" name="location_name" value="<?php echo $_SESSION['reg_data']['location'] ?? ''; ?>" placeholder="<?php echo $translations['location'] ?? 'Enter your location'; ?>" <?php echo $currentStep == 2 ? 'required' : ''; ?>>
+                <input type="hidden" name="latitude" value="17.3850">
+                <input type="hidden" name="longitude" value="78.4867">
+            </div>
+
+            <div class="form-navigation">
+                <a href="?step=1" class="btn-nav btn-prev">
+                    <i class="fas fa-arrow-left"></i> Previous
+                </a>
+                <button type="submit" class="btn-nav btn-next" onclick="document.getElementById('form_step').value='2'; return true;">
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label for="age"><?php echo $translations['age'] ?? 'Age'; ?> <span class="required">*</span></label>
-                <input type="number" id="age" name="age" placeholder="<?php echo $translations['age'] ?? 'Age'; ?>" min="18" max="100" required>
+        <!-- STEP 3: Account Security -->
+        <div class="form-step <?php echo $currentStep == 3 ? 'active' : ''; ?>" id="step3">
+            <h2 style="font-size: 20px; font-weight: 700; color: var(--text-dark); margin-bottom: 24px;">
+                <i class="fas fa-lock" style="color: var(--primary-green); margin-right: 8px;"></i>
+                Account Security
+            </h2>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="password"><?php echo $translations['password'] ?? 'Password'; ?> <span class="required">*</span></label>
+                    <input type="password" id="password" name="password" placeholder="<?php echo $translations['password'] ?? 'Create a strong password'; ?>" <?php echo $currentStep == 3 ? 'required' : ''; ?>>
+                    <div class="password-hint"><?php echo $translations['password_hint'] ?? 'Use at least 8 characters'; ?></div>
+                </div>
+                <div class="form-group">
+                    <label for="confirm_password"><?php echo $translations['confirm_password'] ?? 'Confirm Password'; ?> <span class="required">*</span></label>
+                    <input type="password" id="confirm_password" name="confirm_password" placeholder="<?php echo $translations['confirm_password'] ?? 'Re-enter password'; ?>" <?php echo $currentStep == 3 ? 'required' : ''; ?>>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="gender"><?php echo $translations['gender'] ?? 'Gender'; ?> <span class="required">*</span></label>
-                <select id="gender" name="gender" required>
-                    <option value=""><?php echo $translations['select_gender'] ?? 'Select Gender'; ?></option>
-                    <option value="Male"><?php echo $translations['male'] ?? 'Male'; ?></option>
-                    <option value="Female"><?php echo $translations['female'] ?? 'Female'; ?></option>
-                    <option value="Other"><?php echo $translations['other'] ?? 'Other'; ?></option>
-                </select>
+
+            <div class="form-navigation">
+                <a href="?step=2" class="btn-nav btn-prev">
+                    <i class="fas fa-arrow-left"></i> Previous
+                </a>
+                <button type="submit" class="btn-nav btn-next" onclick="document.getElementById('form_step').value='3'; return true;">
+                    <i class="fas fa-check"></i> Complete Registration
+                </button>
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label for="aadhar"><?php echo $translations['aadhar'] ?? 'Aadhar Number'; ?> <span class="required">*</span></label>
-                <input type="text" id="aadhar" name="aadhar" placeholder="<?php echo $translations['aadhar'] ?? '12-digit Aadhar'; ?>" maxlength="12" required>
-            </div>
-            <div class="form-group">
-                <label for="caste"><?php echo $translations['caste'] ?? 'Caste'; ?> <span class="required">*</span></label>
-                <input type="text" id="caste" name="caste" placeholder="<?php echo $translations['caste'] ?? 'Enter caste'; ?>" required>
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label for="total_land"><?php echo $translations['total_land'] ?? 'Total Land (acres)'; ?> <span class="required">*</span></label>
-                <input type="number" id="total_land" name="total_land" placeholder="<?php echo $translations['total_land'] ?? 'Land in acres'; ?>" step="0.01" min="0" required>
-            </div>
-            <div class="form-group">
-                <label for="role"><?php echo $translations['role'] ?? 'Role'; ?> <span class="required">*</span></label>
-                <select id="role" name="role" required>
-                    <option value="farmer"><?php echo $translations['farmer'] ?? 'Farmer'; ?></option>
-                    <option value="admin"><?php echo $translations['admin'] ?? 'Admin'; ?></option>
-                </select>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label for="location_name"><?php echo $translations['location'] ?? 'Location'; ?> <span class="required">*</span></label>
-            <input type="text" id="location_name" name="location_name" placeholder="<?php echo $translations['location'] ?? 'Enter your location'; ?>" required>
-            <input type="hidden" name="latitude" value="17.3850">
-            <input type="hidden" name="longitude" value="78.4867">
-        </div>
-
-        <div class="form-divider">
-            <span><?php echo $translations['account_security'] ?? 'Account Security'; ?></span>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label for="password"><?php echo $translations['password'] ?? 'Password'; ?> <span class="required">*</span></label>
-                <input type="password" id="password" name="password" placeholder="<?php echo $translations['password'] ?? 'Create a strong password'; ?>" required>
-                <div class="password-hint"><?php echo $translations['password_hint'] ?? 'Use at least 8 characters'; ?></div>
-            </div>
-            <div class="form-group">
-                <label for="confirm_password"><?php echo $translations['confirm_password'] ?? 'Confirm Password'; ?> <span class="required">*</span></label>
-                <input type="password" id="confirm_password" name="confirm_password" placeholder="<?php echo $translations['confirm_password'] ?? 'Re-enter password'; ?>" required>
-            </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary">
-            <i class="fas fa-user-plus"></i>
-            <?php echo $translations['register'] ?? 'Register'; ?>
-        </button>
-
-        <div style="text-align: center; margin-top: 24px; color: var(--text-light); font-size: 14px;">
+        <div style="text-align: center; margin-top: 32px; color: var(--text-light); font-size: 14px;">
             <?php echo $translations['already_have_account'] ?? 'Already have an account?'; ?>
             <a href="login.php" style="color: var(--primary-green); text-decoration: none; font-weight: 600;">
                 <?php echo $translations['login'] ?? 'Login'; ?>
@@ -674,7 +1009,25 @@ body::before {
     </form>
 
     <?php else: ?>
-    <!-- OTP Verification Form -->
+    <!-- OTP Verification Form (Step 4) -->
+    <div class="progress-container">
+        <div class="progress-steps">
+            <div class="progress-line" style="width: 100%"></div>
+            <div class="step-item completed">
+                <div class="step-circle"></div>
+                <div class="step-label">Basic Info</div>
+            </div>
+            <div class="step-item completed">
+                <div class="step-circle"></div>
+                <div class="step-label">Personal Details</div>
+            </div>
+            <div class="step-item completed">
+                <div class="step-circle"></div>
+                <div class="step-label">Security</div>
+            </div>
+        </div>
+    </div>
+
     <div class="otp-section">
         <div class="icon-wrapper">
             <i class="fas fa-envelope"></i>
@@ -683,7 +1036,7 @@ body::before {
         <p><?php echo $translations['otp_sent_message'] ?? 'We have sent an OTP to your email address. Please enter it below.'; ?></p>
 
         <form method="POST">
-            <input type="hidden" name="step" value="verify_otp">
+            <input type="hidden" name="form_step" value="verify_otp">
             
             <div class="form-group">
                 <label for="otp"><?php echo $translations['enter_otp'] ?? 'Enter OTP'; ?></label>
@@ -697,7 +1050,7 @@ body::before {
         </form>
 
         <div style="text-align: center; margin-top: 24px;">
-            <a href="register.php" class="btn btn-secondary" style="width: auto; padding: 12px 24px;">
+            <a href="register.php?step=3" class="btn btn-secondary" style="width: auto; padding: 12px 24px;">
                 <i class="fas fa-arrow-left"></i>
                 <?php echo $translations['back_to_register'] ?? 'Back to Registration'; ?>
             </a>
@@ -707,8 +1060,8 @@ body::before {
 </div>
 
 <script>
-// Auto-format OTP input
 document.addEventListener('DOMContentLoaded', function() {
+    // Auto-format OTP input
     const otpInput = document.getElementById('otp');
     if (otpInput) {
         otpInput.addEventListener('input', function(e) {
@@ -728,7 +1081,87 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmPassword.setCustomValidity('');
             }
         });
+
+        password.addEventListener('input', function() {
+            if (password.value !== confirmPassword.value) {
+                confirmPassword.setCustomValidity('<?php echo $translations['passwords_do_not_match'] ?? 'Passwords do not match'; ?>');
+            } else {
+                confirmPassword.setCustomValidity('');
+            }
+        });
     }
+
+    // Form step validation before submission
+    const registerForm = document.getElementById('registerForm');
+    const formStepInput = document.getElementById('form_step');
+    if (registerForm) {
+        registerForm.addEventListener('submit', function(e) {
+            const activeStep = document.querySelector('.form-step.active');
+            if (activeStep) {
+                const inputs = activeStep.querySelectorAll('input[required], select[required]');
+                let isValid = true;
+                
+                inputs.forEach(input => {
+                    if (!input.value.trim()) {
+                        isValid = false;
+                        input.style.borderColor = 'var(--error-color)';
+                    } else {
+                        input.style.borderColor = '';
+                    }
+                });
+
+                if (!isValid) {
+                    e.preventDefault();
+                    alert('Please fill all required fields');
+                    return false;
+                }
+
+                // Get current step from hidden input
+                const formStep = formStepInput ? formStepInput.value : '1';
+                
+                // Additional validation for step 1
+                if (formStep === '1') {
+                    const emailInput = document.getElementById('email');
+                    const mobileInput = document.getElementById('mobile');
+                    
+                    if (emailInput && !emailInput.value.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+                        e.preventDefault();
+                        alert('Please enter a valid email address');
+                        return false;
+                    }
+                    
+                    if (mobileInput && mobileInput.value.length < 10) {
+                        e.preventDefault();
+                        alert('Please enter a valid mobile number');
+                        return false;
+                    }
+                }
+
+                // Additional validation for step 3
+                if (formStep === '3' && password && confirmPassword) {
+                    if (password.value.length < 8) {
+                        e.preventDefault();
+                        alert('Password must be at least 8 characters long');
+                        return false;
+                    }
+                    
+                    if (password.value !== confirmPassword.value) {
+                        e.preventDefault();
+                        alert('Passwords do not match');
+                        return false;
+                    }
+                }
+            }
+        });
+    }
+
+    // Remove error styling on input
+    const inputs = document.querySelectorAll('.form-step input, .form-step select');
+    inputs.forEach(input => {
+        input.addEventListener('input', function() {
+            this.style.borderColor = '';
+        });
+    });
 });
 </script>
 

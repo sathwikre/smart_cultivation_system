@@ -93,6 +93,8 @@ body::before {
     min-height: 100vh;
     position: relative;
     z-index: 1;
+    width: 100%;
+    overflow-x: visible;
 }
 
 /* Sidebar */
@@ -240,6 +242,9 @@ body::before {
     padding: 40px;
     background: transparent;
     animation: fadeInUp 0.5s ease-out;
+    min-width: 0;
+    overflow-x: visible;
+    width: 100%;
 }
 
 @keyframes fadeInUp {
@@ -283,6 +288,8 @@ body::before {
     border-radius: 16px;
     box-shadow: var(--shadow-sm);
     margin-bottom: 30px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .header h1 {
@@ -308,11 +315,13 @@ body::before {
     box-shadow: var(--shadow-sm);
     margin-bottom: 24px;
     position: relative;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 #search {
     width: 100%;
-    padding: 14px 16px 14px 50px;
+    padding: 14px 16px 14px 48px;
     border-radius: 10px;
     border: 2px solid var(--border-color);
     font-size: 15px;
@@ -321,6 +330,7 @@ body::before {
     background: white;
     color: var(--text-dark);
     outline: none;
+    box-sizing: border-box;
 }
 
 #search:focus {
@@ -333,12 +343,13 @@ body::before {
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
     position: absolute;
-    left: 40px;
+    left: 36px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-light);
     font-size: 18px;
     pointer-events: none;
+    z-index: 1;
 }
 
 /* Table Box */
@@ -348,14 +359,38 @@ body::before {
     border-radius: 16px;
     box-shadow: var(--shadow-sm);
     overflow-x: auto;
+    overflow-y: visible;
     animation: fadeInUp 0.6s ease-out 0.2s both;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
+    display: block;
+}
+
+.table-box::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-box::-webkit-scrollbar-track {
+    background: var(--bg-light);
+    border-radius: 4px;
+}
+
+.table-box::-webkit-scrollbar-thumb {
+    background: var(--primary-green);
+    border-radius: 4px;
+}
+
+.table-box::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-green-dark);
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
     color: var(--text-dark);
-    min-width: 1200px;
+    min-width: 1100px;
+    table-layout: auto;
 }
 
 thead th {
@@ -370,7 +405,20 @@ thead th {
     letter-spacing: 0.5px;
     position: sticky;
     top: 0;
+    vertical-align: middle;
 }
+
+thead th:nth-child(1) { text-align: center; width: 50px; min-width: 50px; } /* ID */
+thead th:nth-child(2) { min-width: 150px; } /* Full Name */
+thead th:nth-child(3) { min-width: 180px; } /* Email */
+thead th:nth-child(4) { text-align: center; width: 110px; min-width: 110px; } /* Mobile */
+thead th:nth-child(5) { min-width: 100px; } /* District */
+thead th:nth-child(6) { min-width: 100px; } /* State */
+thead th:nth-child(7) { text-align: center; width: 130px; min-width: 130px; } /* Registered */
+thead th:nth-child(8) { text-align: center; width: 70px; min-width: 70px; } /* Crops */
+thead th:nth-child(9) { text-align: center; width: 110px; min-width: 110px; } /* Notifications */
+thead th:nth-child(10) { text-align: center; width: 90px; min-width: 90px; } /* Status */
+thead th:nth-child(11) { text-align: center; width: 230px; min-width: 230px; } /* Actions */
 
 tbody td {
     padding: 16px 14px;
@@ -378,7 +426,17 @@ tbody td {
     color: var(--text-dark);
     font-size: 14px;
     transition: var(--transition);
+    vertical-align: middle;
+    word-wrap: break-word;
 }
+
+tbody td:nth-child(1) { text-align: center; } /* ID */
+tbody td:nth-child(4) { text-align: center; } /* Mobile */
+tbody td:nth-child(7) { text-align: center; } /* Registered */
+tbody td:nth-child(8) { text-align: center; font-weight: 600; } /* Crops */
+tbody td:nth-child(9) { text-align: center; font-weight: 600; } /* Notifications */
+tbody td:nth-child(10) { text-align: center; } /* Status */
+tbody td:nth-child(11) { text-align: center; } /* Actions */
 
 tbody tr {
     transition: var(--transition);
@@ -409,6 +467,14 @@ tbody tr:hover {
 }
 
 /* Action Buttons */
+.action-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .action-btn {
     display: inline-flex;
     align-items: center;
@@ -425,6 +491,7 @@ tbody tr:hover {
     text-decoration: none;
     position: relative;
     overflow: hidden;
+    white-space: nowrap;
 }
 
 .action-btn::before {
@@ -512,6 +579,16 @@ tbody tr:hover {
 }
 
 /* Responsive */
+@media (min-width: 1400px) {
+    .main {
+        padding: 40px 60px;
+    }
+    
+    table {
+        min-width: 1200px;
+    }
+}
+
 @media (max-width: 1024px) {
     .dashboard {
         flex-direction: column;
@@ -527,6 +604,11 @@ tbody tr:hover {
 
     .main {
         padding: 20px;
+        width: 100%;
+    }
+    
+    .table-box {
+        padding: 16px;
     }
 }
 
@@ -545,15 +627,29 @@ tbody tr:hover {
 
     table {
         font-size: 13px;
+        min-width: 1000px;
     }
 
-    th, td {
+    thead th, tbody td {
         padding: 12px 8px;
+    }
+
+    thead th:nth-child(11),
+    tbody td:nth-child(11) {
+        min-width: 200px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        gap: 6px;
+        align-items: stretch;
     }
 
     .action-btn {
         padding: 6px 12px;
         font-size: 12px;
+        width: 100%;
+        justify-content: center;
     }
 }
 
@@ -673,30 +769,37 @@ tbody tr:hover {
                             </td>
 
                             <td>
-                                <a href="edit_farmer.php?id=<?php echo $f['id']; ?>">
-                                    <button class="action-btn btn-edit">
-                                        <i class="fas fa-edit"></i> <span>Edit</span>
-                                    </button>
-                                </a>
+                                <div class="action-buttons">
+                                    <a href="edit_farmer.php?id=<?php echo $f['id']; ?>">
+                                        <button class="action-btn btn-edit">
+                                            <i class="fas fa-edit"></i> <span>Edit</span>
+                                        </button>
+                                    </a>
 
-                                <a href="toggle_farmer.php?id=<?php echo $f['id']; ?>">
-                                    <button class="action-btn <?php echo ($status == 'Active') ? 'btn-deactivate' : 'btn-activate'; ?>">
-                                        <i class="fas fa-<?php echo ($status == 'Active') ? 'ban' : 'check-circle'; ?>"></i>
-                                        <span><?php echo ($status == 'Active') ? 'Deactivate' : 'Activate'; ?></span>
-                                    </button>
-                                </a>
+                                    <a href="toggle_farmer.php?id=<?php echo $f['id']; ?>">
+                                        <button class="action-btn <?php echo ($status == 'Active') ? 'btn-deactivate' : 'btn-activate'; ?>">
+                                            <i class="fas fa-<?php echo ($status == 'Active') ? 'ban' : 'check-circle'; ?>"></i>
+                                            <span><?php echo ($status == 'Active') ? 'Deactivate' : 'Activate'; ?></span>
+                                        </button>
+                                    </a>
 
-                                <a href="delete_farmer.php?id=<?php echo $f['id']; ?>" onclick="return confirm('Delete this farmer?')">
-                                    <button class="action-btn btn-delete">
-                                        <i class="fas fa-trash"></i> <span>Delete</span>
-                                    </button>
-                                </a>
+                                    <a href="delete_farmer.php?id=<?php echo $f['id']; ?>" onclick="return confirm('Delete this farmer?')">
+                                        <button class="action-btn btn-delete">
+                                            <i class="fas fa-trash"></i> <span>Delete</span>
+                                        </button>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
 
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="11" style="text-align:center;">No farmers found.</td></tr>
+                    <tr>
+                        <td colspan="11" style="text-align:center; padding: 40px 20px; color: var(--text-light);">
+                            <i class="fas fa-user-slash" style="font-size: 48px; margin-bottom: 16px; display: block; color: var(--text-light);"></i>
+                            <p style="font-size: 16px; font-weight: 500;">No farmers found.</p>
+                        </td>
+                    </tr>
                 <?php endif; ?>
             </tbody>
 
